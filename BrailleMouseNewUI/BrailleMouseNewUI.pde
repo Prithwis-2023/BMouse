@@ -207,8 +207,15 @@ void draw()
            noStroke();
            text(charGroupBoundingBox, lineXStart, lineY);
           
-           lineXStart += groupWidthBoundingBox;
+           //lineXStart += groupWidthBoundingBox;
           
+           char[] groupArray = new char[slidingWindowGrouping];
+           
+           for (int arrIndex = 0; arrIndex < slidingWindowGrouping; arrIndex++)
+           {
+             groupArray[arrIndex] = ' ';
+           }
+           
            int startIndex = Math.max(0, j - leftRightChars);
            int endIndex = Math.min(currentLine.length(), j + leftRightChars + 1);
              
@@ -216,6 +223,14 @@ void draw()
         
            float charX = textXStart + textWidth(currentLine.substring(0, j)); // Correct X position
         
+           for (int chrIndex = 0; chrIndex < charGroup.length(); chrIndex++)
+           {
+             char c = charGroup.charAt(chrIndex);
+             groupArray[chrIndex] = c;
+           }
+           
+           String group = String.valueOf(groupArray);
+           
           // Prevent text overflow
            if (charX + textWidth(charGroup) > width) 
            {
@@ -238,21 +253,23 @@ void draw()
                 //    noStroke();
                 //    text(currentLine.charAt(j + charIndex), charX, lineY);
                 //}
-                charX += charWidth;
                 
                 // Check if the pointer is inside the current group's bounding box
-                if (mouseX >= lineXStart && mouseX <= lineXStart + charWidth && mouseY >= lineY && mouseY <= lineY + lineHeight) 
+                if (mouseX >= lineXStart && mouseX <= lineXStart + charWidth - 0.5 && mouseY >= lineY && mouseY <= lineY + lineHeight) 
                 {
-                    if (!charGroup.equals(lastSentGroup)) 
+                    if (!group.equals(lastSentGroup)) 
                     { 
                         // Send only if this is a new group
-                        sendToBrailleGroup(charGroup, "#");
-                        lastSentGroup = charGroup; // Updating the last sent group
+                        sendToBrailleGroup(group, "#");
+                        lastSentGroup = group; // Updating the last sent group
                     }
                 }
+                
+                charX += charWidth;
             }
            
             //lineXStart += textWidth(currentLine.charAt(j)); // Move forward properly*/
+            lineXStart += groupWidthBoundingBox;
          }
       }
     }
