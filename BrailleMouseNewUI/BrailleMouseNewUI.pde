@@ -3,7 +3,11 @@ import processing.serial.*;
 
 final int DB_FREQ = 3;
 final String DTEXT = "Hello today is a nice day"; // "Enter your text here"
+
+// braille setting
+final boolean slidingWindow = true; final boolean charGrouping = false;
 final int slidingWindowGrouping = 5;
+int brailleFrequency;
 
 String slidingWindowState; // Stores "Off" or "On"
 
@@ -35,7 +39,7 @@ void setup()
     String portName = Serial.list()[0];
     myPort = new Serial(this, portName, 9600);
     
-    slidingWindowState = gui.radio("Braille Settings/Sliding Window", new String[] {"Off", "On"}, "Off");
+    //slidingWindowState = gui.radio("Braille Settings/Sliding Window", new String[] {"Off", "On"}, "Off");
 }
 
 void sendToBrailleGroup(String group, String marker)
@@ -57,11 +61,19 @@ void draw()
     
     // Braille settings
     //int cellCount = gui.sliderInt("Braille Settings/Cell Count", 8);
-    slidingWindowState = gui.radio("Braille Settings/Sliding Window", new String[] {"Off", "On"}, slidingWindowState);
-    
-    int brailleFrequency = gui.sliderInt("Braille Settings/Character Grouping", DB_FREQ, 1, 5);
-    
-    
+    if ((!slidingWindow && charGrouping) || (slidingWindow && !charGrouping))
+    {
+      if (charGrouping == true)
+      {
+        brailleFrequency = gui.sliderInt("Braille Settings/Character Grouping", DB_FREQ, 1, 5);
+        slidingWindowState = gui.radio("Braille Settings/Sliding Window", new String[] {"Off", "On"}, "Off");
+      }
+      else if (slidingWindow == true)
+      {
+        slidingWindowState = gui.radio("Braille Settings/Sliding Window", new String[] {"Off", "On"}, "On");
+      }
+    }
+
     // Handle text input
     userInput = gui.text("Text/Input", DTEXT);
     
@@ -170,36 +182,62 @@ void draw()
         
          for (int j = 0; j < currentLine.length(); j += groupSize) 
          {
-            int startIndex = Math.max(0, j - leftRightChars);
-            int endIndex = Math.min(currentLine.length(), j + leftRightChars + 1);
+           int boundingBoxEndIndex = Math.min(j + groupSize, currentLine.length());
+           String charGroupBoundingBox = currentLine.substring(j, boundingBoxEndIndex);
+           
+           float groupWidthBoundingBox = 0;
+           
+           for (int k = j; k < boundingBoxEndIndex; k++)
+           {
+              groupWidthBoundingBox += textWidth(currentLine.charAt(k));
+           }
+           
+           // Prevent text overflow
+           if (lineXStart + groupWidthBoundingBox > width) 
+           {
+              println("Text overflow prevented!");
+              lineXStart = textXStart;
+           }
+           noFill();
+           stroke(234, 220, 0); // yellow stroke
+           rect(lineXStart, lineY, groupWidthBoundingBox, lineHeight, 10);
+          
+           // now render the characters
+           fill(255);
+           noStroke();
+           text(charGroupBoundingBox, lineXStart, lineY);
+          
+           lineXStart += groupWidthBoundingBox;
+          
+           int startIndex = Math.max(0, j - leftRightChars);
+           int endIndex = Math.min(currentLine.length(), j + leftRightChars + 1);
              
-            String charGroup = currentLine.substring(startIndex, endIndex);
+           String charGroup = currentLine.substring(startIndex, endIndex);
         
-            float charX = textXStart + textWidth(currentLine.substring(0, j)); // Correct X position
+           float charX = textXStart + textWidth(currentLine.substring(0, j)); // Correct X position
         
-            // Prevent text overflow
-            if (charX + textWidth(charGroup) > width) 
-            {
-                println("Text overflow prevented!");
-                charX = textXStart;
-            }
+          // Prevent text overflow
+           if (charX + textWidth(charGroup) > width) 
+           {
+              charX = textXStart;
+           }
         
-            noFill();
-            stroke(234, 220, 0); // yellow stroke
-            rect(charX, lineY, textWidth(charGroup), lineHeight, 10);
+            //noFill();
+            //stroke(234, 220, 0); // yellow stroke
+            //rect(charX, lineY, textWidth(charGroup), lineHeight, 10);
         
-            // Render characters, avoiding duplicates
-            for (int charIndex = 0; charIndex < charGroup.length(); charIndex++) 
-            {
-                float charWidth = textWidth(charGroup.charAt(charIndex));
+           // Render characters, avoiding duplicates
+           for (int charIndex = 0; charIndex < charGroup.length(); charIndex++) 
+           {
+               float charWidth = textWidth(charGroup.charAt(charIndex));
                 
                 // Check if this character was already drawn (skip redundant drawing)
-                if (j + charIndex < currentLine.length()) 
-                {
-                    fill(255);
-                    noStroke();
-                    text(currentLine.charAt(j + charIndex), charX, lineY);
-                }
+                //if (j + charIndex < currentLine.length()) 
+                //{
+                //    fill(255);
+                //    noStroke();
+                //    text(currentLine.charAt(j + charIndex), charX, lineY);
+                //}
                 charX += charWidth;
                 
                 // Check if the pointer is inside the current group's bounding box
@@ -214,7 +252,7 @@ void draw()
                 }
             }
            
-            lineXStart += textWidth(currentLine.charAt(j)); // Move forward properly
+            //lineXStart += textWidth(currentLine.charAt(j)); // Move forward properly*/
          }
       }
     }
