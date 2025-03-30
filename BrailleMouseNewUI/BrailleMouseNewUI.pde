@@ -1,5 +1,9 @@
 import com.krab.lazy.*;
 import processing.serial.*;
+import processing.sound.*;
+
+SoundFile EOLBeep; SoundFile COLBeep;
+boolean isEOLBeepPlayed = false;
 
 final int DB_FREQ = 3;
 final String DTEXT = "Hello today is a nice day"; // "Enter your text here"
@@ -40,6 +44,9 @@ void setup()
     myPort = new Serial(this, portName, 9600);
     
     //slidingWindowState = gui.radio("Braille Settings/Sliding Window", new String[] {"Off", "On"}, "Off");
+    
+    EOLBeep = new SoundFile(this, "endOfLineBeep.mp3");
+    COLBeep = new SoundFile(this, "ChangeOfLine.mp3");
 }
 
 void sendToBrailleGroup(String group, String marker)
@@ -56,6 +63,7 @@ void sendToBrailleGroup(String group, String marker)
 
 void draw() 
 {
+    isEOLBeepPlayed = false;
     // Background color adjustment
     background(gui.colorPicker("Background/Color").hex);
     
@@ -134,6 +142,15 @@ void draw()
         // process characters in groups
         for (int j = 0; j < currentLine.length(); j += groupSize)
         {
+          boolean atBoundary = (j == 0 || j + groupSize >= currentLine.length() - 1);
+          if (atBoundary && !isEOLBeepPlayed)
+          {
+            EOLBeep.stop();      // Optional: stop any current playback.
+            EOLBeep.play();
+            isEOLBeepPlayed = true;
+            break;
+          }
+
           int endIndex = Math.min(j + groupSize, currentLine.length());
           String charGroup = currentLine.substring(j, endIndex);
           
@@ -182,6 +199,16 @@ void draw()
         
          for (int j = 0; j < currentLine.length(); j += groupSize) 
          {
+           boolean atBoundary = (j == 0 || j + groupSize >= currentLine.length() - 1);
+           if (atBoundary && !isEOLBeepPlayed)
+           {
+              EOLBeep.stop();      // Optional: stop any current playback.
+              //EOLBeep.rewind();    // Ensures playback starts from the beginning.
+              EOLBeep.play();
+              isEOLBeepPlayed = true;
+              break;
+           }
+
            int boundingBoxEndIndex = Math.min(j + groupSize, currentLine.length());
            String charGroupBoundingBox = currentLine.substring(j, boundingBoxEndIndex);
            
@@ -216,20 +243,42 @@ void draw()
              groupArray[arrIndex] = ' ';
            }
            
-           int startIndex = Math.max(0, j - leftRightChars);
-           int endIndex = Math.min(currentLine.length(), j + leftRightChars + 1);
-             
-           String charGroup = currentLine.substring(startIndex, endIndex);
-        
-           float charX = textXStart + textWidth(currentLine.substring(0, j)); // Correct X position
-        
-           for (int chrIndex = 0; chrIndex < charGroup.length(); chrIndex++)
+           int startIndex, endIndex; 
+           String charGroup;
+           int spaces = 0;
+          
+           if (j - leftRightChars < 0) 
            {
-             char c = charGroup.charAt(chrIndex);
-             groupArray[chrIndex] = c;
-           }
+              // Edge case: not enough characters to the left
+              // Determine how many spaces to pad on the left:
+              spaces = leftRightChars - j;
+              startIndex = 0;
+              // Use as many characters as possible from the beginning, but do not exceed the string length.
+              endIndex = Math.min(currentLine.length(), j + leftRightChars + 1);
+              charGroup = currentLine.substring(startIndex, endIndex);
+              // Fill the padded array: leave left "spaces" as blank and then add the substring.
+              for (int pos = 0; pos < charGroup.length(); pos++) 
+              {
+                groupArray[spaces + pos] = charGroup.charAt(pos);
+              }
+          } 
+          else 
+          {
+              // Normal case: there are enough characters on the left.
+              startIndex = j - leftRightChars;
+              endIndex = Math.min(currentLine.length(), j + leftRightChars + 1);
+              charGroup = currentLine.substring(startIndex, endIndex);
+              for (int pos = 0; pos < charGroup.length(); pos++) 
+              {
+                groupArray[pos] = charGroup.charAt(pos);
+              }
+          }
            
            String group = String.valueOf(groupArray);
+           
+           // Adjust the drawing x-coordinate if the edge case is active.
+          float padWidth = spaces * textWidth(' ');
+          float charX = textXStart + textWidth(currentLine.substring(0, j)) - padWidth;
            
           // Prevent text overflow
            if (charX + textWidth(charGroup) > width) 
