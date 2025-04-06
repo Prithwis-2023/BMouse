@@ -5,15 +5,16 @@ import processing.sound.*;
 SoundFile EOLBeep; SoundFile COLBeep;
 boolean isEOLBeepPlayed = false;
 
-final int DB_FREQ = 3;
+final int DB_FREQ = 5;
 final String DTEXT = "Hello today is a nice day"; // "Enter your text here"
 
 // braille setting
-final boolean slidingWindow = true; final boolean charGrouping = false;
-final int slidingWindowGrouping = 5;
+final boolean slidingWindow = true; final boolean charGrouping = false; final boolean wordGrouping = false;
+final int slidingWindowGrouping = 8;  // 1, 3, 5, and 8
 int brailleFrequency;
 
 String slidingWindowState; // Stores "Off" or "On"
+String wordGroupingState;
 
 Serial myPort;
 String portName = "COM6";
@@ -69,16 +70,24 @@ void draw()
     
     // Braille settings
     //int cellCount = gui.sliderInt("Braille Settings/Cell Count", 8);
-    if ((!slidingWindow && charGrouping) || (slidingWindow && !charGrouping))
+    if ((!slidingWindow && charGrouping) || (slidingWindow && !charGrouping) || (wordGrouping && !slidingWindow && !charGrouping))
     {
       if (charGrouping == true)
       {
-        brailleFrequency = gui.sliderInt("Braille Settings/Character Grouping", DB_FREQ, 1, 5);
+        brailleFrequency = gui.sliderInt("Braille Settings/Character Grouping", DB_FREQ, 1, 8);
         slidingWindowState = gui.radio("Braille Settings/Sliding Window", new String[] {"Off", "On"}, "Off");
+        wordGroupingState = gui.radio("Braille Settings/Word Grouping", new String[] {"Off", "On"}, "Off");
+        
       }
       else if (slidingWindow == true)
       {
         slidingWindowState = gui.radio("Braille Settings/Sliding Window", new String[] {"Off", "On"}, "On");
+        wordGroupingState = gui.radio("Braille Settings/Word Grouping", new String[] {"Off", "On"}, "Off");
+      }
+      else if (wordGrouping == true)
+      {
+        slidingWindowState = gui.radio("Braille Settings/Sliding Window", new String[] {"Off", "On"}, "Off");
+        wordGroupingState = gui.radio("Braille Settings/Word Grouping", new String[] {"Off", "On"}, "On");
       }
     }
 
@@ -87,6 +96,7 @@ void draw()
     
     float extraSpacing = gui.sliderInt("Text Settings/Line Spacing", 10);
     float textSizeVal = gui.sliderInt("Text Settings/Text Size", 32);
+    float boxHeightVal = gui.sliderInt("Text Settings/Box Height", 0);
     
     PFont font;
     String fontStyle = gui.radio(
@@ -122,7 +132,7 @@ void draw()
     textAlign(LEFT, TOP);
     float textXStart = width / 2 - textWidth(userInput) / 2;
     float textYStart = height / 2;
-    float lineHeight = textAscent() + textDescent();
+    float lineHeight = textAscent() + textDescent() + boxHeightVal;
     //text(userInput, width / 2, height / 2);
     
     String[] lines = userInput.split("\n");
@@ -135,7 +145,7 @@ void draw()
       
       String currentLine = lines[i];
       
-      if (slidingWindowState.equals("Off"))
+      if (slidingWindowState.equals("Off") && wordGroupingState.equals("Off"))
       {
         int groupSize = brailleFrequency;//Integer.parseInt(brailleFrequency);
         
@@ -148,7 +158,6 @@ void draw()
             EOLBeep.stop();      // Optional: stop any current playback.
             EOLBeep.play();
             isEOLBeepPlayed = true;
-            break;
           }
 
           int endIndex = Math.min(j + groupSize, currentLine.length());
@@ -175,7 +184,7 @@ void draw()
           // now render the characters
           fill(255);
           noStroke();
-          text(charGroup, lineXStart, lineY);
+          text(charGroup, lineXStart, lineY + boxHeightVal / 2);
           
           // Check if the pointer is inside the current group's bounding box
           if (mouseX >= lineXStart && mouseX <= lineXStart + groupWidth && mouseY >= lineY && mouseY <= lineY + lineHeight) 
@@ -191,11 +200,19 @@ void draw()
           lineXStart += groupWidth;
         }
       }
-      else
+      else if (slidingWindowState.equals("On") && wordGroupingState.equals("Off"))
       {
         int groupSize = 1;
         int slidingWindowSize = slidingWindowGrouping;
-        int leftRightChars = (slidingWindowSize - 1) / 2; // Calculate left/right char count
+        int leftRightChars;
+        if (slidingWindowSize % 2 != 0)
+        {
+          leftRightChars = (slidingWindowSize - 1) / 2;
+        }
+        else
+        {
+          leftRightChars = slidingWindowSize / 2;
+         }
         
          for (int j = 0; j < currentLine.length(); j += groupSize) 
          {
@@ -206,7 +223,6 @@ void draw()
               //EOLBeep.rewind();    // Ensures playback starts from the beginning.
               EOLBeep.play();
               isEOLBeepPlayed = true;
-              break;
            }
 
            int boundingBoxEndIndex = Math.min(j + groupSize, currentLine.length());
@@ -232,7 +248,7 @@ void draw()
            // now render the characters
            fill(255);
            noStroke();
-           text(charGroupBoundingBox, lineXStart, lineY);
+           text(charGroupBoundingBox, lineXStart, lineY + boxHeightVal / 2);
           
            //lineXStart += groupWidthBoundingBox;
           
@@ -249,28 +265,57 @@ void draw()
           
            if (j - leftRightChars < 0) 
            {
-              // Edge case: not enough characters to the left
-              // Determine how many spaces to pad on the left:
-              spaces = leftRightChars - j;
-              startIndex = 0;
-              // Use as many characters as possible from the beginning, but do not exceed the string length.
-              endIndex = Math.min(currentLine.length(), j + leftRightChars + 1);
-              charGroup = currentLine.substring(startIndex, endIndex);
-              // Fill the padded array: leave left "spaces" as blank and then add the substring.
-              for (int pos = 0; pos < charGroup.length(); pos++) 
-              {
-                groupArray[spaces + pos] = charGroup.charAt(pos);
-              }
+             if (slidingWindowSize % 2 != 0)
+             {
+                // Edge case: not enough characters to the left
+                // Determine how many spaces to pad on the left:
+                spaces = leftRightChars - j;
+                startIndex = 0;
+                // Use as many characters as possible from the beginning, but do not exceed the string length.
+                endIndex = Math.min(currentLine.length(), j + leftRightChars + 1);
+                charGroup = currentLine.substring(startIndex, endIndex);
+                // Fill the padded array: leave left "spaces" as blank and then add the substring.
+                for (int pos = 0; pos < charGroup.length(); pos++) 
+                {
+                  groupArray[spaces + pos] = charGroup.charAt(pos);
+                }
+             }
+             else  // this block only for the 8 cell mark
+             {
+               spaces = leftRightChars - j - 1;
+               startIndex = 0;
+               
+               endIndex = Math.min(currentLine.length(), j + leftRightChars + 1);
+               charGroup = currentLine.substring(startIndex, endIndex);
+               
+               for (int pos = 0; pos < charGroup.length(); pos++)
+               {
+                 groupArray[spaces + pos] = charGroup.charAt(pos);
+               }
+             }
           } 
           else 
           {
               // Normal case: there are enough characters on the left.
-              startIndex = j - leftRightChars;
-              endIndex = Math.min(currentLine.length(), j + leftRightChars + 1);
-              charGroup = currentLine.substring(startIndex, endIndex);
-              for (int pos = 0; pos < charGroup.length(); pos++) 
+              if (slidingWindowSize % 2 != 0)
               {
-                groupArray[pos] = charGroup.charAt(pos);
+                startIndex = j - leftRightChars;
+                endIndex = Math.min(currentLine.length(), j + leftRightChars + 1);
+                charGroup = currentLine.substring(startIndex, endIndex);
+                for (int pos = 0; pos < charGroup.length(); pos++) 
+                {
+                  groupArray[pos] = charGroup.charAt(pos);
+                }
+              }
+              else
+              {
+                startIndex = j - (leftRightChars - 1);
+                endIndex = Math.min(currentLine.length(), j + leftRightChars + 1);
+                charGroup = currentLine.substring(startIndex, endIndex);
+                for (int pos = 0; pos < charGroup.length(); pos++)
+                {
+                  groupArray[pos] = charGroup.charAt(pos);
+                }
               }
           }
            
@@ -320,6 +365,11 @@ void draw()
             //lineXStart += textWidth(currentLine.charAt(j)); // Move forward properly*/
             lineXStart += groupWidthBoundingBox;
          }
+      }
+      else if (slidingWindowState.equals("Off") && wordGroupingState.equals("On"))
+      {
+        // continue here
+        continue;
       }
     }
     
