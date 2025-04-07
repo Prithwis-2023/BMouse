@@ -5,11 +5,13 @@ import processing.sound.*;
 SoundFile EOLBeep; SoundFile COLBeep;
 boolean isEOLBeepPlayed = false;
 
+int prevLineIndex = -1;
+
 final int DB_FREQ = 5;
-final String DTEXT = "Hello today is a nice day"; // "Enter your text here"
+final String DTEXT = "Welcome to a delightful afternoon of exploration and creativity!";  // "Enter your text here"
 
 // braille setting
-final boolean slidingWindow = true; final boolean charGrouping = false; final boolean wordGrouping = false;
+final boolean slidingWindow = false; final boolean charGrouping = true; final boolean wordGrouping =false;
 final int slidingWindowGrouping = 8;  // 1, 3, 5, and 8
 int brailleFrequency;
 
@@ -134,17 +136,40 @@ void draw()
     float textYStart = height / 2;
     float lineHeight = textAscent() + textDescent() + boxHeightVal;
     //text(userInput, width / 2, height / 2);
+    float maxWidth = width - 100;
     
     String[] lines = userInput.split("\n");
     
-    
+    int currentLineIndex = -1;
+   
     for (int i = 0; i < lines.length; i++)
     {
       float lineY = textYStart + i * (lineHeight + extraSpacing);
-      float lineXStart = textXStart;
       
+      if (mouseY >= lineY && mouseY < (lineY + lineHeight))
+      {
+        currentLineIndex = i;
+        break;
+      }
+      float lineXStart = textXStart;
+
       String currentLine = lines[i];
       
+      float leftBoundary = lineXStart; float rightBoundary = lineXStart + textWidth(currentLine);
+      
+      if (mouseX <= leftBoundary || mouseX >= rightBoundary)
+      {
+        EOLBeep.stop();  // Optional: stop any current playback.
+        EOLBeep.play();
+        isEOLBeepPlayed = true;
+      }
+      else 
+      {
+        if (mouseX > leftBoundary || mouseX < rightBoundary)
+        {
+          isEOLBeepPlayed = false;
+        }
+      }
       if (slidingWindowState.equals("Off") && wordGroupingState.equals("Off"))
       {
         int groupSize = brailleFrequency;//Integer.parseInt(brailleFrequency);
@@ -152,14 +177,6 @@ void draw()
         // process characters in groups
         for (int j = 0; j < currentLine.length(); j += groupSize)
         {
-          boolean atBoundary = (j == 0 || j + groupSize >= currentLine.length() - 1);
-          if (atBoundary && !isEOLBeepPlayed)
-          {
-            EOLBeep.stop();      // Optional: stop any current playback.
-            EOLBeep.play();
-            isEOLBeepPlayed = true;
-          }
-
           int endIndex = Math.min(j + groupSize, currentLine.length());
           String charGroup = currentLine.substring(j, endIndex);
           
@@ -368,8 +385,35 @@ void draw()
       }
       else if (slidingWindowState.equals("Off") && wordGroupingState.equals("On"))
       {
-        // continue here
-        continue;
+        String[] words = currentLine.split(" ");
+        for (String word: words)
+        {
+          float wordWidth = textWidth(word);
+          
+          if (lineXStart + wordWidth > width)
+          {
+            println("Text overflow prevented");
+            lineXStart = textXStart;
+            lineY += textAscent() + textDescent() + boxHeightVal + extraSpacing;
+          }
+          noFill();
+          stroke(234, 220, 0);
+          rect(lineXStart, lineY, wordWidth, lineHeight, 10); // bounding box
+          
+          fill(255);
+          noStroke();
+          text(word, lineXStart, lineY + boxHeightVal / 2);
+          
+          if (mouseX >= lineXStart && mouseX <= lineXStart + wordWidth && mouseY >= lineY && mouseY <= lineY + lineHeight)
+          {
+            if (!word.equals(lastSentGroup))
+            {
+              sendToBrailleGroup(word, "^");
+              lastSentGroup = word;
+            }
+          }
+          lineXStart += wordWidth + textWidth(" ");  // Move forward to next word
+        }
       }
     }
     
