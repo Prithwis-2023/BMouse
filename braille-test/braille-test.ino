@@ -12,7 +12,7 @@ BrailleDisplay display(CELL_COUNT, ON_PIN, DIN_PIN, LATCH_PIN, CLK_PIN, DOUT_PIN
 String receivedData = "";
 bool newGroupReceived = false;
 
-char _brailleChars[60] =
+/*char _brailleChars[60] =
 {
     ' ',  // 0x2800
     'a', //  0x2801
@@ -69,7 +69,7 @@ char _brailleChars[60] =
     '\'\'', // 0x2834
     'z', // 0x2835
     '(', // 0x2836
-};
+};*/
 
 void setup()
 {
@@ -104,7 +104,7 @@ uint16_t charToBraille(char c)
 {
   for (int i = 0; i < 256; i++)
   {
-    if (_brailleChars[i] == c)
+    if (display._brailleChars[i] == c)
     {
       return (uint16_t)(0x2800 + i);
     }
