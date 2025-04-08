@@ -11,7 +11,7 @@ final int DB_FREQ = 5;
 final String DTEXT = "Welcome to a delightful afternoon of exploration and creativity!";  // "Enter your text here"
 
 // braille setting
-final boolean slidingWindow = false; final boolean charGrouping = true; final boolean wordGrouping =false;
+final boolean slidingWindow = true; final boolean charGrouping = false; final boolean wordGrouping = false;
 final int slidingWindowGrouping = 8;  // 1, 3, 5, and 8
 int brailleFrequency;
 
@@ -136,7 +136,7 @@ void draw()
     float textYStart = height / 2;
     float lineHeight = textAscent() + textDescent() + boxHeightVal;
     //text(userInput, width / 2, height / 2);
-    float maxWidth = width - 100;
+    //float maxWidth = width - 100;
     
     String[] lines = userInput.split("\n");
     
@@ -149,7 +149,6 @@ void draw()
       if (mouseY >= lineY && mouseY < (lineY + lineHeight))
       {
         currentLineIndex = i;
-        break;
       }
       float lineXStart = textXStart;
 
@@ -417,6 +416,15 @@ void draw()
       }
     }
     
+    if (currentLineIndex != -1 && currentLineIndex != prevLineIndex) 
+    {
+      COLBeep.stop(); 
+      COLBeep.play();   
+      
+      // Update the previous line index.
+      prevLineIndex = currentLineIndex;
+    }
+
     // Calculate the active line based on mouseY, ensuring the index is valid
     int activeLine = Math.max(0, Math.min((int) ((mouseY - textYStart) / (lineHeight + extraSpacing)), lines.length - 1));
     
