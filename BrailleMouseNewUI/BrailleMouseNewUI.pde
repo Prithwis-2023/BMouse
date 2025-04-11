@@ -6,7 +6,7 @@ SoundFile EOLBeep; SoundFile COLBeep;
 boolean isEOLBeepPlayed = false;
 
 int prevLineIndex = -1;
-
+// hello
 final int DB_FREQ = 5;
 final String DTEXT = "Welcome to a delightful afternoon of exploration and creativity!";  // "Enter your text here"
 

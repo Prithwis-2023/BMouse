@@ -8,17 +8,44 @@
 #define CLK_PIN 5
 #define DOUT_PIN 2
 
+#define interruptFreq 0.3
+
 BrailleDisplay display(CELL_COUNT, ON_PIN, DIN_PIN, LATCH_PIN, CLK_PIN, DOUT_PIN);
 String receivedData = "";
+String currentWord = "";
 bool newGroupReceived = false;
+bool timerTick = false;
+bool newWordAvailable = false;
 
 void setup()
 {
   Serial.begin(9600);
   display.begin();
   display.clear();
+
+  cli();
+
+  // set timer1 at the interrupt frequency
+  TCCR1A = 0; // set entire TCCR1A register to 0
+  TCCR1B = 0; // same for TCCR1B
+  TCNT1  = 0; // initialize counter variable to 0
+
+  // set compare match register for increments
+  OCR1A = 52082; // (16 * 10^6) / (0.3 * 1024) - 1 [ must be  < 65536]
+  // turn on CTC mode
+  TCCR1B |= (1 << WGM12);
+  // Set CS10 and CS12 bits for 1024 prescaler
+  TCCR1B |= (1 << CS12) | (1 << CS10);
+  // enable timer compare interrupt
+  TIMSK1 |= (1 << OCIE1A);
+
+  sei(); // allow interrupts
 }
 
+ISR(TIMER1_COMPA_vect) // timer 1 interrupt  
+{
+  timerTick = true;
+}
 void loop()
 {
   while (Serial.available() > 0)
@@ -27,7 +54,6 @@ void loop()
 
     if (incomingChar == '$')
     {
-      receivedData = "";
       newGroupReceived = true;
     }
     else if (incomingChar == '*' || incomingChar == '#' || incomingChar == '^')
@@ -36,13 +62,31 @@ void loop()
       {
         display.clear();
       }
-      processBrailleGroup(receivedData, incomingChar);
+      if (incomingChar == '^')
+      {
+        currentWord = receivedData;
+        newWordAvailable = true;
+      }
+      else
+      {
+        processBrailleGroup(receivedData, incomingChar);
+      }
       receivedData = "";
       newGroupReceived = false;
     }
     else
     {
       receivedData += incomingChar;
+    }
+  }
+  if (timerTick)
+  {
+    timerTick = false;
+    if (newWordAvailable)
+    {
+      display.clear();
+      processBrailleGroup(currentWord, '^');
+      newWordAvailable = false;
     }
   }
 }
