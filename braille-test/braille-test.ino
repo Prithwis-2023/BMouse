@@ -25,8 +25,8 @@ void setup()
   cli();
 
   // set timer2 (8 bits) at the interrupt frequency 1 kHz
-  TCCR2A = 0; // set entire TCCR1A register to 0
-  TCCR2B = 0; // same for TCCR1B
+  TCCR2A = 0; // set entire TCCR2A register to 0
+  TCCR2B = 0; // same for TCCR2B
   TCNT2  = 0; // initialize counter variable to 0
 
   // set compare match register for 1 kHz increments
