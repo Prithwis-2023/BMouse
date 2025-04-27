@@ -8,14 +8,13 @@
 #define CLK_PIN 5
 #define DOUT_PIN 2
 
-#define interruptFreq 0.3
-
 BrailleDisplay display(CELL_COUNT, ON_PIN, DIN_PIN, LATCH_PIN, CLK_PIN, DOUT_PIN);
 String receivedData = "";
 String currentWord = "";
 bool newGroupReceived = false;
-bool timerTick = false;
 bool newWordAvailable = false;
+int scrollIndex = 0;
+int scrollTimer = 0;
 
 void setup()
 {
@@ -25,68 +24,111 @@ void setup()
 
   cli();
 
-  // set timer1 at the interrupt frequency
-  TCCR1A = 0; // set entire TCCR1A register to 0
-  TCCR1B = 0; // same for TCCR1B
-  TCNT1  = 0; // initialize counter variable to 0
+  // set timer2 (8 bits) at the interrupt frequency 1 kHz
+  TCCR2A = 0; // set entire TCCR1A register to 0
+  TCCR2B = 0; // same for TCCR1B
+  TCNT2  = 0; // initialize counter variable to 0
 
-  // set compare match register for increments
-  OCR1A = 52082; // (16 * 10^6) / (0.3 * 1024) - 1 [ must be  < 65536]
+  // set compare match register for 1 kHz increments
+  OCR2A = 222; // (16 * 10^6) / (1000 * 64) - 1 [ must be  < 256]
   // turn on CTC mode
-  TCCR1B |= (1 << WGM12);
-  // Set CS10 and CS12 bits for 1024 prescaler
-  TCCR1B |= (1 << CS12) | (1 << CS10);
+  TCCR2A |= (1 << WGM21);
+  // Set CS22 bit for 64 prescaler
+  TCCR2B |= (1 << CS22);
   // enable timer compare interrupt
-  TIMSK1 |= (1 << OCIE1A);
+  TIMSK2 |= (1 << OCIE2A);
 
   sei(); // allow interrupts
 }
 
-ISR(TIMER1_COMPA_vect) // timer 1 interrupt  
+ISR(TIMER2_COMPA_vect) // timer 2 interrupt  
 {
-  timerTick = true;
+  if (newWordAvailable)
+  {
+    scrollTimer++;
+
+    if (scrollTimer >= 500)
+    {
+      scrollTimer = 0;
+
+      int wordLength = currentWord.length();
+      if (wordLength <= CELL_COUNT)
+      {
+        // word is short
+        for (int i = 0; i < wordLength; i++)
+        {
+          display.writeCell(currentWord[i], i);
+        }
+        newWordAvailable = false; // done and no scrolling needed
+      }
+      else
+      {
+        display.clear(); // clear once per frame
+
+        // scroll the word
+        for (int i = 0; i < CELL_COUNT; i++)
+        {
+          int charIndex = scrollIndex + i;
+          if (charIndex < wordLength)
+          {
+            display.writeCell(currentWord[charIndex], i);
+          }
+          else
+          {
+            display.writeCell(' ', i);
+          }
+        }
+        scrollIndex++;
+
+        // if scrolling has finished
+        if (scrollIndex > (wordLength - CELL_COUNT))
+        {
+          scrollIndex = 0;
+          newWordAvailable = false;
+        }
+      }
+    }
+    //display.clear();
+    //processBrailleGroup(currentWord, '|');
+    //newWordAvailable = false;
+  }
 }
+
 void loop()
 {
   while (Serial.available() > 0)
   {
     char incomingChar = Serial.read();
 
-    if (incomingChar == '$')
+    if (incomingChar == '*' || incomingChar == '#' || incomingChar == '^')
     {
       newGroupReceived = true;
+      receivedData = ""; // Clear when new group starts
     }
-    else if (incomingChar == '*' || incomingChar == '#' || incomingChar == '^')
+    else if (incomingChar == '@' || incomingChar == '+' || incomingChar == '|')
     {
       if (newGroupReceived)
       {
         display.clear();
+        newGroupReceived = false;
       }
-      if (incomingChar == '^')
+      if (incomingChar == '|')
       {
         currentWord = receivedData;
+        scrollIndex = 0; // start from the beginning
         newWordAvailable = true;
       }
       else
       {
         processBrailleGroup(receivedData, incomingChar);
       }
-      receivedData = "";
-      newGroupReceived = false;
+
+      /*receivedData = "";
+      newGroupReceived = false;*/
     }
     else
     {
       receivedData += incomingChar;
-    }
-  }
-  if (timerTick)
-  {
-    timerTick = false;
-    if (newWordAvailable)
-    {
-      display.clear();
-      processBrailleGroup(currentWord, '^');
-      newWordAvailable = false;
     }
   }
 }
@@ -107,7 +149,7 @@ void processBrailleGroup(String group, char c)
 {
   int groupLength = group.length(); 
 
-  if (c == '*')
+  if (c == '@')
   {
     for (int i = 0; i < groupLength; i++)
     {
@@ -117,7 +159,7 @@ void processBrailleGroup(String group, char c)
       }
     }
   }
-  else if (c == '#')
+  else if (c == '+')
   {
     int middleIndex = (groupLength - 1) / 2;
 
@@ -138,7 +180,7 @@ void processBrailleGroup(String group, char c)
         display.writeCell(group[i], 3 + (i - middleIndex));
     }
   }
-  else if (c == '^')
+  else if (c == '|')
   {
     uint16_t charsArray[groupLength];
 

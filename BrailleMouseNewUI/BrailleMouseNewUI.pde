@@ -6,12 +6,12 @@ SoundFile EOLBeep; SoundFile COLBeep;
 boolean isEOLBeepPlayed = false;
 
 int prevLineIndex = -1;
-// hello
+
 final int DB_FREQ = 5;
 final String DTEXT = "Welcome to a delightful afternoon of exploration and creativity!";  // "Enter your text here"
 
 // braille setting
-final boolean slidingWindow = true; final boolean charGrouping = false; final boolean wordGrouping = false;
+final boolean slidingWindow = false; final boolean charGrouping = false; final boolean wordGrouping = true;
 final int slidingWindowGrouping = 5;  // 1, 3, 5, and 8
 int brailleFrequency;
 
