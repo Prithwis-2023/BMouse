@@ -4,6 +4,7 @@ import processing.sound.*;
 
 SoundFile EOLBeep; SoundFile COLBeep;
 boolean isEOLBeepPlayed = false;
+boolean mouseWasInsideLine = false;
 
 int prevLineIndex = -1;
 
@@ -11,8 +12,8 @@ final int DB_FREQ = 5;
 final String DTEXT = "Welcome to a delightful afternoon of exploration and creativity!";  // "Enter your text here"
 
 // braille setting
-final boolean slidingWindow = false; final boolean charGrouping = false; final boolean wordGrouping = true;
-final int slidingWindowGrouping = 5;  // 1, 3, 5, and 8
+final boolean slidingWindow = true; final boolean charGrouping = false; final boolean wordGrouping = false;
+final int slidingWindowGrouping = 8;  // 1, 3, 5, and 8
 int brailleFrequency;
 
 String slidingWindowState; // Stores "Off" or "On"
@@ -52,7 +53,7 @@ void setup()
     COLBeep = new SoundFile(this, "ChangeOfLine.mp3");
 }
 
-void sendToBrailleGroup(String startMarker, String group, String endMarker)
+void sendToBrailleGroup(String group, String startMarker, String endMarker)
 {
   if (myPort != null)
   {
@@ -156,7 +157,18 @@ void draw()
       
       float leftBoundary = lineXStart; float rightBoundary = lineXStart + textWidth(currentLine);
       
-      if (mouseX <= leftBoundary || mouseX >= rightBoundary)
+      boolean mouseIsInsideLine = (mouseX > leftBoundary && mouseX < rightBoundary);
+      
+      if (!mouseIsInsideLine && mouseWasInsideLine)
+      {
+        EOLBeep.stop();  // Optional: stop any current playback.
+        EOLBeep.play();
+        isEOLBeepPlayed = true;
+      }
+      // Updating for the next frame
+      mouseWasInsideLine = mouseIsInsideLine;
+      
+      /*if (mouseX <= leftBoundary || mouseX >= rightBoundary)
       {
         EOLBeep.stop();  // Optional: stop any current playback.
         EOLBeep.play();
@@ -168,7 +180,7 @@ void draw()
         {
           isEOLBeepPlayed = false;
         }
-      }
+      }*/
       if (slidingWindowState.equals("Off") && wordGroupingState.equals("Off"))
       {
         int groupSize = brailleFrequency;//Integer.parseInt(brailleFrequency);
@@ -208,7 +220,7 @@ void draw()
               if (!charGroup.equals(lastSentGroup)) 
               { 
                   // Send only if this is a new group
-                  sendToBrailleGroup("$", charGroup, "*");
+                  sendToBrailleGroup(charGroup, "*", "@");
                   lastSentGroup = charGroup; // Updating the last sent group
               }
           }
@@ -370,7 +382,7 @@ void draw()
                     if (!group.equals(lastSentGroup)) 
                     { 
                         // Send only if this is a new group
-                        sendToBrailleGroup("$", group, "#");
+                        sendToBrailleGroup(group, "#", "+");
                         lastSentGroup = group; // Updating the last sent group
                     }
                 }
@@ -407,7 +419,7 @@ void draw()
           {
             if (!word.equals(lastSentGroup))
             {
-              sendToBrailleGroup("$", word, "^");
+              sendToBrailleGroup(word, "^", "|");
               lastSentGroup = word;
             }
           }
