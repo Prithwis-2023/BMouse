@@ -12,7 +12,7 @@ final int DB_FREQ = 5;
 final String DTEXT = "Welcome to a delightful afternoon of exploration and creativity!";  // "Enter your text here"
 
 // braille setting
-final boolean slidingWindow = true; final boolean charGrouping = false; final boolean wordGrouping = false;
+final boolean slidingWindow = false; final boolean charGrouping = false; final boolean wordGrouping = true;
 final int slidingWindowGrouping = 8;  // 1, 3, 5, and 8
 int brailleFrequency;
 
@@ -63,6 +63,43 @@ void sendToBrailleGroup(String group, String startMarker, String endMarker)
   }
   
   delay(1);
+}
+
+String[] wrapText(String text, float maxWidth)
+{
+  ArrayList<String> wrappedLines = new ArrayList<String>();
+  String[] words = splitTokens(text, " ");
+  String currentLine = "";
+  
+  for (int i = 0; i < words.length; i++)
+  {
+    String testLine = currentLine.length() == 0 ? words[i] : currentLine + " " + words[i];
+    if (textWidth(testLine) <= maxWidth)
+    {
+      currentLine = testLine;
+    }
+    else
+    {
+      wrappedLines.add(currentLine);
+      currentLine = words[i];
+    }
+  }
+  if (!currentLine.equals(""))
+  {
+    wrappedLines.add(currentLine);
+  }
+  
+  return wrappedLines.toArray(new String[0]);
+}
+
+void handleEOLBeep(boolean isInsideLine, boolean wasInsideLine) 
+{
+  if (!isInsideLine && wasInsideLine) 
+  {
+    EOLBeep.stop();  // Optional: stop any current playback
+    EOLBeep.play();
+    isEOLBeepPlayed = true;
+  }
 }
 
 void draw() 
@@ -134,12 +171,17 @@ void draw()
     textSize(textSizeVal); // Fixed text size
     textAlign(LEFT, TOP);
     float textXStart = width / 2 - textWidth(userInput) / 2;
-    float textYStart = height / 2;
+    //float textYStart = height / 2;
     float lineHeight = textAscent() + textDescent() + boxHeightVal;
+    float margin = 100;
     //text(userInput, width / 2, height / 2);
-    //float maxWidth = width - 100;
+    float maxWidth = width - 2 * margin;
     
-    String[] lines = userInput.split("\n");
+    //String[] lines = userInput.split("\n");
+    String[] lines = wrapText(userInput, maxWidth);
+    
+    float totalTextHeight = lines.length * (lineHeight + extraSpacing);
+    float textYStart = height / 2 - totalTextHeight / 2;
     
     int currentLineIndex = -1;
    
@@ -151,36 +193,25 @@ void draw()
       {
         currentLineIndex = i;
       }
-      float lineXStart = textXStart;
-
+      float lineXStart = margin;//textXStart;
+      float visibleStartX = lineXStart; // for the left boundary
+      float visibleEndX = lineXStart;   // track the right boundary dynamically
+      
       String currentLine = lines[i];
       
-      float leftBoundary = lineXStart; float rightBoundary = lineXStart + textWidth(currentLine);
+      //float leftBoundary = lineXStart; float rightBoundary = lineXStart + textWidth(currentLine);
       
-      boolean mouseIsInsideLine = (mouseX > leftBoundary && mouseX < rightBoundary);
+      //boolean mouseIsInsideLine = (mouseX > leftBoundary && mouseX < rightBoundary);
       
-      if (!mouseIsInsideLine && mouseWasInsideLine)
-      {
-        EOLBeep.stop();  // Optional: stop any current playback.
-        EOLBeep.play();
-        isEOLBeepPlayed = true;
-      }
+      //if (!mouseIsInsideLine && mouseWasInsideLine)
+      //{
+      //  EOLBeep.stop();  // Optional: stop any current playback.
+      //  EOLBeep.play();
+      //  isEOLBeepPlayed = true;
+      //}
       // Updating for the next frame
-      mouseWasInsideLine = mouseIsInsideLine;
-      
-      /*if (mouseX <= leftBoundary || mouseX >= rightBoundary)
-      {
-        EOLBeep.stop();  // Optional: stop any current playback.
-        EOLBeep.play();
-        isEOLBeepPlayed = true;
-      }
-      else 
-      {
-        if (mouseX > leftBoundary || mouseX < rightBoundary)
-        {
-          isEOLBeepPlayed = false;
-        }
-      }*/
+      //mouseWasInsideLine = mouseIsInsideLine;
+
       if (slidingWindowState.equals("Off") && wordGroupingState.equals("Off"))
       {
         int groupSize = brailleFrequency;//Integer.parseInt(brailleFrequency);
@@ -202,7 +233,7 @@ void draw()
           if (lineXStart + groupWidth > width) 
           {
               println("Text overflow prevented!");
-              lineXStart = textXStart;
+              lineXStart = margin; //textXStart;
               //break; // Stop rendering the current group if it goes outside the canvas width
           }
           noFill();
@@ -224,10 +255,12 @@ void draw()
                   lastSentGroup = charGroup; // Updating the last sent group
               }
           }
-          // update the starting position for next group
-          lineXStart += groupWidth;
+          visibleEndX = lineXStart + groupWidth; // update the right boundary
+          
+          lineXStart += groupWidth; // update the starting position for next group
         }
       }
+      
       else if (slidingWindowState.equals("On") && wordGroupingState.equals("Off"))
       {
         int groupSize = 1;
@@ -426,6 +459,16 @@ void draw()
           lineXStart += wordWidth + textWidth(" ");  // Move forward to next word
         }
       }
+      
+      //now compuing the boundaries after rendering the line
+      float leftBoundary = visibleStartX; float rightBoundary = visibleEndX;
+      
+      boolean mouseIsInsideLine = (mouseX > leftBoundary && mouseX < rightBoundary);
+      
+      handleEOLBeep(mouseIsInsideLine, mouseWasInsideLine);
+      
+      // Updating for the next frame
+      mouseWasInsideLine = mouseIsInsideLine;
     }
     
     if (currentLineIndex != -1 && currentLineIndex != prevLineIndex) 
@@ -441,7 +484,7 @@ void draw()
     int activeLine = Math.max(0, Math.min((int) ((mouseY - textYStart) / (lineHeight + extraSpacing)), lines.length - 1));
     
     // Restrict pointer X position to the width of the active line
-    float pointerX = constrain(mouseX, textXStart, textXStart + textWidth(lines[activeLine]) - 10);
+    float pointerX = constrain(mouseX, margin, margin + textWidth(lines[activeLine]) - 10);
     
     // Restrict pointer Y position to the active line's center
     float pointerY = textYStart + activeLine * (lineHeight + extraSpacing) + (lineHeight) / 3;
