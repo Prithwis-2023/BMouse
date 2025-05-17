@@ -10,8 +10,8 @@ import processing.sound.*;
  * 3. slidingWindow: displays a sliding window of characters
  */
 final boolean slidingWindow = false;  // sliding window feature toggle
-final boolean charGrouping = false;  // character grouping feature toggle
-final boolean wordGrouping = true;  // word grouping feature toggle
+final boolean charGrouping = true;  // character grouping feature toggle
+final boolean wordGrouping = false;  // word grouping feature toggle
 
 final int defaultCharGrouping_FREQ = 5;  // character group frequency for charGrouping feature
 final int defaultSlidingWindow_FREQ = 8;  // sliding window frequency for slidingWindow feature. Can be 1, 3, 5 or 8
@@ -139,11 +139,11 @@ void detectMode(boolean slidingWindowToggle, boolean charGroupingToggle, boolean
   }
 }
 
-void drawText(String presentLine, float startPosX, float startPosY, float boundingBoxHeight)
+void drawText(String presentLine, float PosX, float PosY)
 {
   fill(255); // set the text color to white
   noStroke();
-  text(presentLine, startPosX, startPosY + boundingBoxHeight / 2); // draw the text
+  text(presentLine, PosX, PosY); // draw the text
 }
 
 void draw()
@@ -161,7 +161,7 @@ void draw()
   float extraSpacing = gui.sliderInt("Text Settings/Line Spacing", 10);
   float textSizeVal = gui.sliderInt("Text Settings/Text Size", 32);
   float boxHeightVal = gui.sliderInt("Text Settings/Box Height", 0);
-  float margin = gui.sliderInt("Text Settings/ Margin", 100)
+  float margin = gui.sliderInt("Text Settings/ Margin", 100);
 
   PFont font;
   String fontStyle = gui.radio(
@@ -190,6 +190,10 @@ void draw()
   font = createFont(fontFileName, 32);
   textFont(font);
 
+  // transformation of the text into lines
+  float maxWidth = width - 2 * margin;
+  String[] lines = wrapText(userInput, maxWidth);
+
   // Text Formatting 
   fill (255); // set the text colot to white
   textSize(textSizeVal); // set the text size
@@ -199,10 +203,6 @@ void draw()
   float totalTextHeight = lines.length * (lineHeight + extraSpacing); // calculate the total text height
   float textYStart = height / 2 - totalTextHeight / 2; // set the text to the center of the screen 
   
-  // transformation of the text into lines
-  float maxWidth = width - 2 * margin;
-  String[] lines = wrapText(userInput, maxWidth);
-
   int currentLineIndex = -1; // initialize the current line index
 
   // iterating through the lines of text
@@ -228,7 +228,7 @@ void draw()
 
       /* Second Pass: draw the box around the text */
       int groupSize = charGroupingFrequency; // set the group size
-      int groupX = lineXStart; // set the group X position
+      float groupX = lineXStart; // set the group X position
       for (int j = 0; j < currentLine.length(); j += groupSize)
       {
         int endIndex = min(j + groupSize, currentLine.length());
