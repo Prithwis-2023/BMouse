@@ -218,9 +218,9 @@ void draw()
     float visibleStartX = lineXStart; // initializa the visible start X position
     float visibleEndX = lineXStart; // initialize the visible end X position
   
-    String currentLine = lines[i]; // get the current line
+    String currentLine = lines[i]; // get the current line  
   
-    // when the character grouping feature is active
+    /* WHEN THE CHARACTER GROUPING FEATURE IS ACTIVE */
     if (slidingWindowState.equals("Off") && wordGroupingState.equals("Off"))
     {
       /* First Pass: draw the text */ 
