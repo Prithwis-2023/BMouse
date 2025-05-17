@@ -12,7 +12,7 @@ final int DB_FREQ = 5;
 final String DTEXT = "Welcome to a delightful afternoon of exploration and creativity!";  // "Enter your text here"
 
 // braille setting
-final boolean slidingWindow = false; final boolean charGrouping = false; final boolean wordGrouping = true;
+final boolean slidingWindow = false; final boolean charGrouping = true; final boolean wordGrouping = false;
 final int slidingWindowGrouping = 8;  // 1, 3, 5, and 8
 int brailleFrequency;
 
@@ -163,7 +163,7 @@ void draw()
     );  
     String fontFileName = fontStyle + ".otf";
     font = createFont(fontFileName, 32);
-    textFont(font);
+    textFont(font); 
     
     
     // Display text on the canvas
@@ -230,7 +230,7 @@ void draw()
           }
           
           // Prevent text overflow
-          if (lineXStart + groupWidth > width) 
+          if (lineXStart + groupWidth > width - margin) 
           {
               println("Text overflow prevented!");
               lineXStart = margin; //textXStart;
