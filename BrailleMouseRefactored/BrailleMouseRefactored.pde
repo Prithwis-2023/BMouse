@@ -9,8 +9,8 @@ import processing.sound.*;
  * 2. wordGrouping: displays words in groups  of the word length
  * 3. slidingWindow: displays a sliding window of characters
  */
-final boolean slidingWindow = false;  // sliding window feature toggle
-final boolean charGrouping = true;  // character grouping feature toggle
+final boolean slidingWindow = true;  // sliding window feature toggle
+final boolean charGrouping = false;  // character grouping feature toggle
 final boolean wordGrouping = false;  // word grouping feature toggle
 
 final int defaultCharGrouping_FREQ = 5;  // character group frequency for charGrouping feature
@@ -146,6 +146,20 @@ void drawText(String presentLine, float PosX, float PosY)
   text(presentLine, PosX, PosY); // draw the text
 }
 
+/*
+call this function from any mode, passing it:
+groupX: where it starts in x
+lineY: vertical position of the line
+groupWidth: measured width
+lineHeight: height of the line box 
+*/
+void drawGroupBox(float groupX, float lineY, float groupWidth, float lineHeight)
+{
+  noFill();
+  stroke(234, 220, 0);
+  rect(groupX, lineY, groupWidth, lineHeight, 10);
+}
+
 void draw()
 {
   // Background color adjustment
@@ -226,7 +240,7 @@ void draw()
       /* First Pass: draw the text */ 
       drawText(currentLine, lineXStart, lineY + boxHeightVal / 2); // draw the text
 
-      /* Second Pass: draw the box around the text */
+      /* Second Pass: create the groups and draw the box around the text */
       int groupSize = charGroupingFrequency; // set the group size
       float groupX = lineXStart; // set the group X position
       for (int j = 0; j < currentLine.length(); j += groupSize)
@@ -247,9 +261,7 @@ void draw()
           lineXStart = margin; // reset the line X position
         }
         // Draw bounding box
-        noFill();
-        stroke(234, 220, 0);
-        rect(groupX, lineY, groupWidth, lineHeight, 10); 
+        drawGroupBox(groupX, lineY, groupWidth, lineHeight);
 
         /* Handle pointer interaction */
         if (mouseX >= groupX && mouseX <= groupX + groupWidth && mouseY >= lineY && mouseY <= lineY + lineHeight)
@@ -266,7 +278,31 @@ void draw()
         visibleEndX = groupX; // update the visible start X position
       }
     }
-  
+    /* WHEN THE SLIDING WINDOW FEATURE IS ACTIVE */
+    else if (slidingWindowState.equals("On") && wordGroupingState.equals("Off"))
+    {
+      /*First Pass" Draw the text */
+      drawText(currentLine, lineXStart, lineY + boxHeightVal / 2); // draw the text
+
+      /* Second Pass: draw the box around the text */
+      float groupX = lineXStart; // set the group X position
+      
+      for (int j = 0; j < currentLine.length(); j++)
+      {
+        char ch = currentLine.charAt(j); // get the character
+        float charWidth = textWidth(ch); // measure the width of the character
+      
+        if (groupX + charWidth > width - margin)
+        {
+          println("Text Overflow Prevented!");
+          lineXStart = margin; // reset the line X position
+        }
+        // Draw bounding box
+        drawGroupBox(groupX, lineY, charWidth, lineHeight);
+
+        groupX += charWidth; // update the group X position for the next character
+      }
+    }
   }
 }
 
