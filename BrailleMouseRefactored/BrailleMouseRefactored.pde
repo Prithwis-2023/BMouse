@@ -278,15 +278,27 @@ void draw()
         visibleEndX = groupX; // update the visible start X position
       }
     }
+
     /* WHEN THE SLIDING WINDOW FEATURE IS ACTIVE */
     else if (slidingWindowState.equals("On") && wordGroupingState.equals("Off"))
     {
       /*First Pass" Draw the text */
       drawText(currentLine, lineXStart, lineY + boxHeightVal / 2); // draw the text
 
-      /* Second Pass: draw the box around the text */
+      /* Second Pass: draw the box around the text and do the processing*/
       float groupX = lineXStart; // set the group X position
+      int slidingWindowSize = defaultSlidingWindow_FREQ; // set the sliding window size
+      int leftRightChars; // number of characters to the left and right of the mouse
       
+      if (slidingWindowSize % 2 == 0)
+      {
+        leftRightChars = slidingWindowSize / 2;
+      }
+      else
+      {
+        leftRightChars = (slidingWindowSize - 1) / 2;
+      }
+
       for (int j = 0; j < currentLine.length(); j++)
       {
         char ch = currentLine.charAt(j); // get the character
@@ -299,7 +311,14 @@ void draw()
         }
         // Draw bounding box
         drawGroupBox(groupX, lineY, charWidth, lineHeight);
-
+        
+        char[] groupArray = new char[slidingWindowSize];  // create a character array for the group
+        for (int arrIndex = 0; arrIndex < slidingWindowSize; arrIndex++)
+        {
+          groupArray[arrIndex] = ' '; // fill the array with spaces
+        }
+        
+        
         groupX += charWidth; // update the group X position for the next character
       }
     }
