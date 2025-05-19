@@ -3,6 +3,9 @@ import com.krab.lazy.*;
 import processing.serial.*;
 import processing.sound.*;
 
+
+
+// TODO: Change the constants used to set the mode into an enum.   
 // constants
 /* we have three display modes:
  * 1. charGrouping: displays characters in groups of DB_FREQ
@@ -23,20 +26,12 @@ SoundFile COLBeep;
 boolean isEOLBeepPlayed = false;
 boolean mouseWasInsideLine = false;
 
-// GUI and Arduino
+// Serial Port
 Serial myPort;
 String portName = Serial.list()[0];  // default port
 
+// GUI
 LazyGui gui;
-
-void clearGUIData()
-{
-    File autoSaveFile = new File(dataPath("BrailleMouseRefactored/saves/auto.json"));
-    if (autoSaveFile.exists()) 
-    {
-        autoSaveFile.delete();
-    }
-}
 
 // Others
 int prevLineIndex = -1;  // previous line index
@@ -46,7 +41,17 @@ String wordGroupingState;  // stores the state of the word grouping
 String userInput = "";
 String lastSentGroup = "";
 
-// setup function
+// Clears GUI Data
+void clearGUIData()
+{
+    File autoSaveFile = new File(dataPath("BrailleMouseRefactored/saves/auto.json"));
+    if (autoSaveFile.exists()) 
+    {
+        autoSaveFile.delete();
+    }
+}
+
+// Setup function - GUI, Serial, Sound
 void setup()
 {
     fullScreen(P2D); // Ensures compatibility with LazyGui
@@ -209,13 +214,13 @@ void draw()
   String[] lines = wrapText(userInput, maxWidth);
 
   // Text Formatting 
-  fill (255); // set the text colot to white
-  textSize(textSizeVal); // set the text size
-  textAlign(LEFT, TOP); // set the text alignment to left and top
-  float textXStart = width / 2 - textWidth(userInput) / 2; // set the text to the center of the screen
-  float lineHeight = textAscent() + textDescent() + boxHeightVal; // calculate the line height
+  fill (255);                   // set the text colot to white
+  textSize(textSizeVal);        // set the text size
+  textAlign(LEFT, TOP);         // set the text alignment to left and top
+  float textXStart = width / 2 - textWidth(userInput) / 2;            // set the text to the center of the screen
+  float lineHeight = textAscent() + textDescent() + boxHeightVal;     // calculate the line height
   float totalTextHeight = lines.length * (lineHeight + extraSpacing); // calculate the total text height
-  float textYStart = height / 2 - totalTextHeight / 2; // set the text to the center of the screen 
+  float textYStart = height / 2 - totalTextHeight / 2;                // set the text to the center of the screen 
   
   int currentLineIndex = -1; // initialize the current line index
 
@@ -226,11 +231,11 @@ void draw()
 
     if (mouseY >= lineY && mouseY < (lineY + lineHeight))
     {
-      currentLineIndex = i; // set the current line index
+      currentLineIndex = i;           // set the current line index
     }
-    float lineXStart = margin; // set the line X position (left end)
+    float lineXStart = margin;        // set the line X position (left end)
     float visibleStartX = lineXStart; // initializa the visible start X position
-    float visibleEndX = lineXStart; // initialize the visible end X position
+    float visibleEndX = lineXStart;   // initialize the visible end X position
   
     String currentLine = lines[i]; // get the current line  
   
@@ -320,9 +325,9 @@ void draw()
         }
         
         int startIndex, endIndex;
-        String tempGroup = ""; // temporary group to hold the characters
-        String group = ""; // group to hold the characters
-        int spaces = 0; // used as padding for the group
+        String tempGroup = "";    // temporary group to hold the characters
+        String group = "";        // group to hold the characters
+        int spaces = 0;           // used as padding for the group
         // Edge case: if the mouse doesn't have enough characters to the left
         if (j - leftRightChars < 0)
         {
@@ -375,8 +380,8 @@ void draw()
             }
           }
         }
-        group = String.valueOf(groupArray); // the final group to be sent to Arduino
-        float groupWidth = textWidth(group); // measure the width of the group
+        group = String.valueOf(groupArray);   // the final group to be sent to Arduino
+        float groupWidth = textWidth(group);  // measure the width of the group
         
         /* Handle pointer interaction */
         if (mouseX >= groupX && mouseX <= groupX + groupWidth && mouseY >= lineY && mouseY <= lineY + lineHeight)
