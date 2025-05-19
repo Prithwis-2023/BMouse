@@ -12,7 +12,7 @@ final int DB_FREQ = 5;
 final String DTEXT = "Welcome to a delightful afternoon of exploration and creativity!";  // "Enter your text here"
 
 // braille setting
-final boolean slidingWindow = false; final boolean charGrouping = true; final boolean wordGrouping = false;
+final boolean slidingWindow = true; final boolean charGrouping = false; final boolean wordGrouping = false;
 final int slidingWindowGrouping = 8;  // 1, 3, 5, and 8
 int brailleFrequency;
 
