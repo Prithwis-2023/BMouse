@@ -376,9 +376,24 @@ void draw()
           }
         }
         group = String.valueOf(groupArray); // the final group to be sent to Arduino
+        float groupWidth = textWidth(group); // measure the width of the group
         
+        /* Handle pointer interaction */
+        if (mouseX >= groupX && mouseX <= groupX + groupWidth && mouseY >= lineY && mouseY <= lineY + lineHeight)
+        {
+          if (!group.equals(lastSentGroup))
+          {
+            // send only if this is a new group
+            sendToBrailleGroup(group, "#", "+");
+            lastSentGroup = group; // update the last sent group
+          }
+        }
         groupX += charWidth; // update the group X position for the next character
       }
+    }
+    else if (slidingWindowState.equals("Off") && wordGroupingState.equals("On"))
+    {
+      continue; // skip the rest of the loop
     }
   }
 }
