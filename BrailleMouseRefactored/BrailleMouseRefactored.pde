@@ -312,12 +312,70 @@ void draw()
         // Draw bounding box
         drawGroupBox(groupX, lineY, charWidth, lineHeight);
         
+        //create the group
         char[] groupArray = new char[slidingWindowSize];  // create a character array for the group
         for (int arrIndex = 0; arrIndex < slidingWindowSize; arrIndex++)
         {
           groupArray[arrIndex] = ' '; // fill the array with spaces
         }
         
+        int startIndex, endIndex;
+        String tempGroup = ""; // temporary group to hold the characters
+        String group = ""; // group to hold the characters
+        int spaces = 0; // used as padding for the group
+        // Edge case: if the mouse doesn't have enough characters to the left
+        if (j - leftRightChars < 0)
+        {
+          if (slidingWindowSize % 2 != 0)
+          {
+            spaces = leftRightChars - j;
+            startIndex = 0;
+            endIndex = min(currentLine.length(), j + leftRightChars + 1); 
+            tempGroup = currentLine.substring(startIndex, endIndex);
+
+            for (int k = 0; k < tempGroup.length(); k++)
+            {
+              groupArray[spaces + k] = tempGroup.charAt(k); // fill the array with the group
+            }
+          } 
+          else
+          {
+            spaces = leftRightChars - j - 1;
+            startIndex = 0;
+            endIndex = min(currentLine.length(), j + leftRightChars + 1);
+            tempGroup = currentLine.substring(startIndex, endIndex);
+
+            for(int k = 0; k < tempGroup.length(); k++)
+            {
+              groupArray[spaces + k] = tempGroup.charAt(k); // fill the array with the group
+            }
+          }
+        }
+        // Normal case: if the mouse has enough characters to the left
+        else
+        {
+          if (slidingWindowSize % 2 != 0)
+          {
+            startIndex = j - leftRightChars;
+            endIndex = min(currentLine.length(), j + leftRightChars + 1);
+            group = currentLine.substring(startIndex, endIndex);
+            for (int k = 0; k < tempGroup.length(); k++)
+            {
+              groupArray[k] = tempGroup.charAt(k); // fill the array with the group
+            }
+          }
+          else
+          {
+            startIndex = j - (leftRightChars - 1);
+            endIndex = min(currentLine.length(), j + leftRightChars + 1);
+            group = currentLine.substring(startIndex, endIndex);
+            for (int k = 0; k < tempGroup.length(); k++)
+            {
+              groupArray[k] = tempGroup.charAt(k); // fill the array with the group
+            }
+          }
+        }
+        group = String.valueOf(groupArray); // the final group to be sent to Arduino
         
         groupX += charWidth; // update the group X position for the next character
       }
