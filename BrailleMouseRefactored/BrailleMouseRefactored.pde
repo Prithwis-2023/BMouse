@@ -286,114 +286,136 @@ void draw()
 
     /* WHEN THE SLIDING WINDOW FEATURE IS ACTIVE */
     else if (slidingWindowState.equals("On") && wordGroupingState.equals("Off"))
-    {
+    { 
       /*First Pass" Draw the text */
       drawText(currentLine, lineXStart, lineY + boxHeightVal / 2); // draw the text
-
-      /* Second Pass: draw the box around the text and do the processing*/
-      float groupX = lineXStart; // set the group X position
-      int slidingWindowSize = defaultSlidingWindow_FREQ; // set the sliding window size
-      int leftRightChars; // number of characters to the left and right of the mouse
       
-      if (slidingWindowSize % 2 == 0)
-      {
-        leftRightChars = slidingWindowSize / 2;
-      }
-      else
+      int slidingWindowSize = defaultSlidingWindow_FREQ; // 
+      int leftRightChars;
+      if (slidingWindowSize % 2 != 0)
       {
         leftRightChars = (slidingWindowSize - 1) / 2;
       }
-
-      for (int j = 0; j < currentLine.length(); j++)
+      else
       {
-        char ch = currentLine.charAt(j); // get the character
-        float charWidth = textWidth(ch); // measure the width of the character
+        leftRightChars = slidingWindowSize / 2;
+      }
       
-        if (groupX + charWidth > width - margin)
+      for (int j = 0; j < currentLine.length(); j++) 
+      {
+        int boundingBoxEndIndex = Math.min(j + 1, currentLine.length());
+        String charGroupBoundingBox = currentLine.substring(j, boundingBoxEndIndex);
+          
+        float groupWidthBoundingBox = 0;
+          
+        for (int k = j; k < boundingBoxEndIndex; k++)
         {
-          println("Text Overflow Prevented!");
-          lineXStart = margin; // reset the line X position
+          groupWidthBoundingBox += textWidth(currentLine.charAt(k));
         }
-        // Draw bounding box
-        drawGroupBox(groupX, lineY, charWidth, lineHeight);
-        
-        //create the group
-        char[] groupArray = new char[slidingWindowSize];  // create a character array for the group
+          
+        // Prevent text overflow
+        if (lineXStart + groupWidthBoundingBox > width) 
+        {
+          println("Text overflow prevented!");
+          lineXStart = textXStart;
+        }
+
+        drawGroupBox(lineXStart, lineY, groupWidthBoundingBox, lineHeight);
+
+        char[] groupArray = new char[slidingWindowSize];
+          
         for (int arrIndex = 0; arrIndex < slidingWindowSize; arrIndex++)
         {
-          groupArray[arrIndex] = ' '; // fill the array with spaces
+          groupArray[arrIndex] = ' ';
         }
-        
-        int startIndex, endIndex;
-        String tempGroup = "";    // temporary group to hold the characters
-        String group = "";        // group to hold the characters
-        int spaces = 0;           // used as padding for the group
+          
+        int startIndex, endIndex; 
+        String charGroup; // temporary group to hold the characters
+        String group;     // final group to be sent to Serial
+        int spaces = 0;   // used as padding for the group
         // Edge case: if the mouse doesn't have enough characters to the left
-        if (j - leftRightChars < 0)
+        if (j - leftRightChars < 0) 
         {
           if (slidingWindowSize % 2 != 0)
           {
-            spaces = leftRightChars - j;
+            spaces = leftRightChars - j; // Determine how many spaces to pad on the left
             startIndex = 0;
-            endIndex = min(currentLine.length(), j + leftRightChars + 1); 
-            tempGroup = currentLine.substring(startIndex, endIndex);
-
-            for (int k = 0; k < tempGroup.length(); k++)
+            endIndex = Math.min(currentLine.length(), j + leftRightChars + 1); // Use as many characters as possible from the beginning, but do not exceed the string length
+            charGroup = currentLine.substring(startIndex, endIndex);
+            // Fill the padded array: leave left "spaces" as blank and then add the substring
+            for (int pos = 0; pos < charGroup.length(); pos++) 
             {
-              groupArray[spaces + k] = tempGroup.charAt(k); // fill the array with the group
+              groupArray[spaces + pos] = charGroup.charAt(pos);
             }
-          } 
-          else
+          }
+          else  
           {
             spaces = leftRightChars - j - 1;
             startIndex = 0;
-            endIndex = min(currentLine.length(), j + leftRightChars + 1);
-            tempGroup = currentLine.substring(startIndex, endIndex);
-
-            for(int k = 0; k < tempGroup.length(); k++)
+            endIndex = Math.min(currentLine.length(), j + leftRightChars + 1);
+            charGroup = currentLine.substring(startIndex, endIndex);
+              
+            for (int pos = 0; pos < charGroup.length(); pos++)
             {
-              groupArray[spaces + k] = tempGroup.charAt(k); // fill the array with the group
+              groupArray[spaces + pos] = charGroup.charAt(pos);
             }
           }
-        }
-        // Normal case: if the mouse has enough characters to the left
-        else
+        } 
+        else 
         {
+          // Normal case: there are enough characters on the left.
           if (slidingWindowSize % 2 != 0)
           {
             startIndex = j - leftRightChars;
-            endIndex = min(currentLine.length(), j + leftRightChars + 1);
-            group = currentLine.substring(startIndex, endIndex);
-            for (int k = 0; k < tempGroup.length(); k++)
+            endIndex = Math.min(currentLine.length(), j + leftRightChars + 1);
+            charGroup = currentLine.substring(startIndex, endIndex);
+            for (int pos = 0; pos < charGroup.length(); pos++) 
             {
-              groupArray[k] = tempGroup.charAt(k); // fill the array with the group
+              groupArray[pos] = charGroup.charAt(pos);
             }
           }
           else
           {
             startIndex = j - (leftRightChars - 1);
-            endIndex = min(currentLine.length(), j + leftRightChars + 1);
-            group = currentLine.substring(startIndex, endIndex);
-            for (int k = 0; k < tempGroup.length(); k++)
+            endIndex = Math.min(currentLine.length(), j + leftRightChars + 1);
+            charGroup = currentLine.substring(startIndex, endIndex);
+            for (int pos = 0; pos < charGroup.length(); pos++)
             {
-              groupArray[k] = tempGroup.charAt(k); // fill the array with the group
+              groupArray[pos] = charGroup.charAt(pos);
             }
           }
         }
-        group = String.valueOf(groupArray);   // the final group to be sent to Arduino
-        float groupWidth = textWidth(group);  // measure the width of the group
-        
-        /* Handle pointer interaction */
-        if (mouseX >= groupX && mouseX <= groupX + groupWidth && mouseY >= lineY && mouseY <= lineY + lineHeight)
+          
+        group = String.valueOf(groupArray);
+          
+        // Adjust the drawing x-coordinate if the edge case is active.
+        float padWidth = spaces * textWidth(' ');
+        float charX = textXStart + textWidth(currentLine.substring(0, j)) - padWidth;
+          
+        // Prevent text overflow
+        if (charX + textWidth(charGroup) > width) 
         {
-          if (!group.equals(lastSentGroup))
-          {
-            // send only if this is a new group
-            sendToBrailleGroup(group, "#", "+");
-            lastSentGroup = group; // update the last sent group
-          }
+          charX = textXStart;
         }
-        groupX += charWidth; // update the group X position for the next character
+      
+        // Render characters, avoiding duplicates
+        for (int charIndex = 0; charIndex < charGroup.length(); charIndex++) 
+        {
+          float charWidth = textWidth(charGroup.charAt(charIndex));
+            
+          // Check if the pointer is inside the current group's bounding box
+          if (mouseX >= lineXStart && mouseX <= lineXStart + charWidth - 0.5 && mouseY >= lineY && mouseY <= lineY + lineHeight) 
+          {
+            if (!group.equals(lastSentGroup)) 
+            { 
+              // Send only if this is a new group
+              sendToBrailleGroup(group, "#", "+");
+              lastSentGroup = group; // Updating the last sent group
+            }
+          }
+          charX += charWidth;
+        }
+        lineXStart += groupWidthBoundingBox;
       }
     }
     else if (slidingWindowState.equals("Off") && wordGroupingState.equals("On"))
