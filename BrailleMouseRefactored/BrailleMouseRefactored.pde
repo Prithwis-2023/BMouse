@@ -161,7 +161,7 @@ void drawGroupBox(float groupX, float lineY, float groupWidth, float lineHeight)
 void playEOLBeep(float pointerX, float startOfLineX, float endOfLineX, float threshold, SoundFile Beep)
 {
   boolean nearStart = abs(pointerX - startOfLineX) <= threshold; // check if the pointer is near the start of the line
-  boolean nearEnd = abs(pointerX - endOfLineEndX) <= threshold; // check if the pointer is near the end of the line
+  boolean nearEnd = abs(pointerX - endOfLineX) <= threshold; // check if the pointer is near the end of the line
   if ((nearStart || nearEnd) && !isEOLBeepPlayed)
   {
     Beep.stop();
