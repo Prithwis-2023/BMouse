@@ -113,17 +113,7 @@ String[] wrapText(String text, float maxWidth)
     return lines.toArray(new String[0]);
 }
 
-// function to handle the end of line sound beep
-void handleEOLBeep(boolean isInsideLine, boolean wasInsideLine)
-{
-  if (!isInsideLine && wasInsideLine)
-  {
-    EOLBeep.stop();  // stop any current playback
-    EOLBeep.play();
-    isEOLBeepPlayed = true;
-  }
-}
-
+// function to detect the mode of operation
 void detectMode(boolean slidingWindowToggle, boolean charGroupingToggle, boolean wordGroupingToggle)
 {
   if ((!slidingWindowToggle && charGroupingToggle) || (slidingWindowToggle && !charGroupingToggle) || (wordGroupingToggle && !slidingWindowToggle && !charGroupingToggle))
@@ -168,6 +158,21 @@ void drawGroupBox(float groupX, float lineY, float groupWidth, float lineHeight)
   rect(groupX, lineY, groupWidth, lineHeight, 10);
 }
 
+void playEOLBeep(float pointerX, float startOfLineX, float endOfLineX, float threshold, SoundFile Beep)
+{
+  boolean nearStart = abs(pointerX - startOfLineX) <= threshold; // check if the pointer is near the start of the line
+  boolean nearEnd = abs(pointerX - endOfLineEndX) <= threshold; // check if the pointer is near the end of the line
+  if ((nearStart || nearEnd) && !isEOLBeepPlayed)
+  {
+    Beep.stop();
+    Beep.play();
+    isEOLBeepPlayed = true; // set the flag to true to prevent multiple beeps
+  }
+  else if (!nearStart && !nearEnd)
+  {
+    isEOLBeepPlayed = false; // reset the flag when the pointer is not near the start or end
+  }
+}
 void draw()
 {
   // Background color adjustment
@@ -418,6 +423,7 @@ void draw()
           charX += charWidth;
         }
         lineXStart += groupWidthBoundingBox;
+        visibleEndX = lineXStart; // update the visible end X position
       }
     }
     else if (slidingWindowState.equals("Off") && wordGroupingState.equals("On"))
@@ -449,20 +455,12 @@ void draw()
           }
         }
         lineXStart += wordWidth + textWidth(' '); // update the line X position for the next word
+        visibleEndX = lineXStart; // update the visible end X position
       }
     }
   }
 
-  // Handle the change of line beep
-  if (currentLineIndex != -1 && currentLineIndex != previousLineIndex)
-  {
-    COLBeep.stop();  // stop any current playback
-    COLBeep.play(); // play the sound
-
-    previousLineIndex = currentLineIndex; // update the previous line index
-  }
-  
-  // Handle pointer mode using radio buttons
+  // POINTER: Create and handle pointer mode using radio buttons
   String mode = gui.radio("Pointer/Mode", new String[] {"Square", "Circle"});
 
   // draw the pointer based on the selection mode
@@ -482,6 +480,19 @@ void draw()
     fill(0, 0, 255); // set the pointer color to red
     ellipse(pointerX, pointerY, 20, 20); // draw the circle pointer
   }
+
+  // Handle the change of line beep
+  if (currentLineIndex != -1 && currentLineIndex != previousLineIndex)
+  {
+    COLBeep.stop();  // stop any current playback
+    COLBeep.play(); // play the sound
+
+    previousLineIndex = currentLineIndex; // update the previous line index
+  }
+  
+  // Handle the end of line beep
+  float threshold = 8; // threshold for the ends of line beep
+  playEOLBeep(pointerX, margin, margin + textWidth(lines[activeLineIndex]), threshold, EOLBeep); // play the end of line beep
 }
 
 
