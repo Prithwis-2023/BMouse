@@ -15,9 +15,9 @@ import processing.sound.*;
  * 2. wordGrouping: displays words in groups  of the word length
  * 3. slidingWindow: displays a sliding window of characters
  */
-final boolean slidingWindow = true;  // sliding window feature toggle
+final boolean slidingWindow = false;  // sliding window feature toggle
 final boolean charGrouping = false;  // character grouping feature toggle
-final boolean wordGrouping = false;  // word grouping feature toggle
+final boolean wordGrouping = true;  // word grouping feature toggle
 
 final int defaultCharGrouping_FREQ = 5;  // character group frequency for charGrouping feature
 final int defaultSlidingWindow_FREQ = 8;  // sliding window frequency for slidingWindow feature. Can be 1, 3, 5 or 8
@@ -37,7 +37,7 @@ String portName = Serial.list()[0];  // default port
 LazyGui gui;
 
 // Others
-int prevLineIndex = -1;  // previous line index
+int previousLineIndex = -1;  // previous line index
 int charGroupingFrequency;
 String slidingWindowState; // stores the state of the sliding window
 String wordGroupingState;  // stores the state of the word grouping
@@ -319,7 +319,7 @@ void draw()
         if (lineXStart + groupWidthBoundingBox > width - margin) 
         {
           println("Text overflow prevented!");
-          lineXStart = margin; // reset the line X position
+          lineXStart = textXStart; // reset the line X position
         }
 
         drawGroupBox(lineXStart, lineY, groupWidthBoundingBox, lineHeight);
@@ -444,7 +444,7 @@ void draw()
           if (!word.equals(lastSentGroup))
           {
             // send only if this is a new group
-            sendToBrailleGroup(word, "!", "?");
+            sendToBrailleGroup(word, "^", "|");
             lastSentGroup = word; // update the last sent group
           }
         }
@@ -452,6 +452,36 @@ void draw()
       }
     }
   }
+
+  // Handle the change of line beep
+  if (currentLineIndex != -1 && currentLineIndex != previousLineIndex)
+  {
+    COLBeep.stop();  // stop any current playback
+    COLBeep.play(); // play the sound
+
+    previousLineIndex = currentLineIndex; // update the previous line index
+  }
+  /*
+  // Handle pointer mode using radio buttons
+  String mode = gui.radio("Pointer/Mode", new String[] {"Square", "Circle"});
+
+  // draw the pointer based on the selection mode
+  int activeLineIndex = (int) constrain((mouseY - textYStart) / (lineHeight + extraSpacing), 0, lines.length - 1); // calculate the active line index
+  float pointerX = constrain(mouseX, margin, margin + textWidth(lines[activeLineIndex])); // constrain the pointer X position 
+  float pointerY = textYStart + activeLineIndex * (lineHeight + extraSpacing) + lineHeight / 3; // calculate the pointer Y position
+  
+  if (mode.equals("Square"))
+  {
+    noStroke();
+    fill(255, 0, 0); // set the pointer color to red
+    rect(pointerX, pointerY, 20, 20); // draw the square pointer
+  }
+  else if (mode.equals("Circle"))
+  {
+    noStroke();
+    fill(0, 0, 255); // set the pointer color to red
+    ellipse(pointerX, pointerY, 20, 20); // draw the circle pointer
+  }*/
 }
 
 
