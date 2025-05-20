@@ -461,7 +461,7 @@ void draw()
 
     previousLineIndex = currentLineIndex; // update the previous line index
   }
-  /*
+  
   // Handle pointer mode using radio buttons
   String mode = gui.radio("Pointer/Mode", new String[] {"Square", "Circle"});
 
@@ -481,7 +481,7 @@ void draw()
     noStroke();
     fill(0, 0, 255); // set the pointer color to red
     ellipse(pointerX, pointerY, 20, 20); // draw the circle pointer
-  }*/
+  }
 }
 
 
