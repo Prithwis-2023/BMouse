@@ -6,6 +6,9 @@ import processing.sound.*;
 
 
 // TODO: Change the constants used to set the mode into an enum.   
+//enum byte {CG, WG, SW} 
+//start = WG; // default mode
+
 // constants
 /* we have three display modes:
  * 1. charGrouping: displays characters in groups of DB_FREQ
@@ -247,7 +250,6 @@ void draw()
 
       /* Second Pass: create the groups and draw the box around the text */
       int groupSize = charGroupingFrequency; // set the group size
-      float groupX = lineXStart; // set the group X position
       for (int j = 0; j < currentLine.length(); j += groupSize)
       {
         int endIndex = min(j + groupSize, currentLine.length());
@@ -260,16 +262,16 @@ void draw()
           groupWidth += textWidth(currentLine.charAt(k));
         }
         // prevent text overflow
-        if (groupX + groupWidth > width - margin)
+        if (lineXStart + groupWidth > width - margin)
         {
           println("Text Overflow Prevented!");
           lineXStart = margin; // reset the line X position
         }
         // Draw bounding box
-        drawGroupBox(groupX, lineY, groupWidth, lineHeight);
+        drawGroupBox(lineXStart, lineY, groupWidth, lineHeight);
 
         /* Handle pointer interaction */
-        if (mouseX >= groupX && mouseX <= groupX + groupWidth && mouseY >= lineY && mouseY <= lineY + lineHeight)
+        if (mouseX >= lineXStart && mouseX <= lineXStart + groupWidth && mouseY >= lineY && mouseY <= lineY + lineHeight)
         {
           if (!group.equals(lastSentGroup))
           {
@@ -279,8 +281,8 @@ void draw()
           }
         }
 
-        groupX += groupWidth; // update the group X position for the next group
-        visibleEndX = groupX; // update the visible start X position
+        lineXStart += groupWidth; // update the group X position for the next group
+        visibleEndX = lineXStart; // update the visible start X position
       }
     }
 
@@ -314,10 +316,10 @@ void draw()
         }
           
         // Prevent text overflow
-        if (lineXStart + groupWidthBoundingBox > width) 
+        if (lineXStart + groupWidthBoundingBox > width - margin) 
         {
           println("Text overflow prevented!");
-          lineXStart = textXStart;
+          lineXStart = margin; // reset the line X position
         }
 
         drawGroupBox(lineXStart, lineY, groupWidthBoundingBox, lineHeight);
@@ -420,7 +422,34 @@ void draw()
     }
     else if (slidingWindowState.equals("Off") && wordGroupingState.equals("On"))
     {
-      continue; // skip the rest of the loop
+      /* FIRST PASS: Draw the text */
+      drawText(currentLine, lineXStart, lineY + boxHeightVal / 2);
+      
+      /* SECOND PASS: create the groups and draw the box around the text */
+      String[] words = currentLine.split(" "); // split the line into words
+      for (String word: words)
+      {
+        float wordWidth = textWidth(word); // measure the width of the word
+
+        if (lineXStart + wordWidth > width - margin)
+        {
+          println("Text Overflow Prevented!");
+          lineXStart = margin; // reset the line X position
+        }
+        drawGroupBox(lineXStart, lineY, wordWidth, lineHeight); // draw the bounding box
+        
+        // Handle pointer interaction
+        if (mouseX >= lineXStart && mouseX <= lineXStart + wordWidth && mouseY >= lineY && mouseY <= lineY + lineHeight)
+        {
+          if (!word.equals(lastSentGroup))
+          {
+            // send only if this is a new group
+            sendToBrailleGroup(word, "!", "?");
+            lastSentGroup = word; // update the last sent group
+          }
+        }
+        lineXStart += wordWidth + textWidth(' '); // update the line X position for the next word
+      }
     }
   }
 }
