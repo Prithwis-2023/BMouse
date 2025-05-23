@@ -3,9 +3,7 @@ import com.krab.lazy.*;
 import processing.serial.*;
 import processing.sound.*;
 
-
-
-// TODO: Change the constants used to set the mode into an enum.   
+// create an enum for the modes
 enum Mode {charGrouping, wordGrouping, slidingWindow}; 
 Mode defaultMode = Mode.charGrouping; // default mode
 
