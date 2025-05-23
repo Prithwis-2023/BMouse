@@ -13,9 +13,9 @@ Mode defaultMode = Mode.charGrouping; // default mode
  * 2. wordGrouping: displays words in groups  of the word length
  * 3. slidingWindow: displays a sliding window of characters
  */
-final boolean slidingWindow = false;  // sliding window feature toggle
-final boolean charGrouping = false;  // character grouping feature toggle
-final boolean wordGrouping = true;  // word grouping feature toggle
+//final boolean slidingWindow = false;  // sliding window feature toggle
+//final boolean charGrouping = false;  // character grouping feature toggle
+//final boolean wordGrouping = true;  // word grouping feature toggle
 
 final int defaultCharGrouping_FREQ = 5;  // character group frequency for charGrouping feature
 final int defaultSlidingWindow_FREQ = 8;  // sliding window frequency for slidingWindow feature. Can be 1, 3, 5 or 8
@@ -24,8 +24,9 @@ final String DTEXT = "Welcome to a delightful afternoon of exploration and creat
 // Sound
 SoundFile EOLBeep; 
 SoundFile COLBeep;
+SoundFile TopandBottomBeep;
 boolean isEOLBeepPlayed = false;
-boolean mouseWasInsideLine = false;
+boolean isBeyondTopnBottom = false;
 
 // Serial Port
 Serial myPort;
@@ -36,9 +37,8 @@ LazyGui gui;
 
 // Others
 int previousLineIndex = -1;  // previous line index
-int charGroupingFrequency;
-String slidingWindowState; // stores the state of the sliding window
-String wordGroupingState;  // stores the state of the word grouping
+int charGroupingFrequency; // stores the character grouping frequency
+int slidingWindowFrequency; // stores the sliding window frequency
 String userInput = "";
 String lastSentGroup = "";
 
@@ -67,6 +67,7 @@ void setup()
     
     EOLBeep = new SoundFile(this, "endOfLineBeep.mp3");
     COLBeep = new SoundFile(this, "ChangeOfLine.mp3");
+    TopandBottomBeep = new SoundFile(this, "UpandDownBeep.mp3");
 }
 
 // function to send the group to the Arduino
@@ -131,21 +132,36 @@ void drawGroupBox(float groupX, float lineY, float groupWidth, float lineHeight)
   rect(groupX, lineY, groupWidth, lineHeight, 10);
 }
 
-void playEOLBeep(float pointerX, float startOfLineX, float endOfLineX, float threshold, SoundFile Beep)
+void playBoundaryBeeps(float pointerX, float pointerY, float startOfLineX, float endOfLineX, float paragraphTopY, float paragraphBottomY, float thresholdX, float thresholdY, SoundFile EOLBeep, SoundFile TnBBeep)
 {
-  boolean nearStart = abs(pointerX - startOfLineX) <= threshold; // check if the pointer is near the start of the line
-  boolean nearEnd = abs(pointerX - endOfLineX) <= threshold; // check if the pointer is near the end of the line
+  boolean nearStart = abs(pointerX - startOfLineX) <= thresholdX; // check if the pointer is near the start of the line
+  boolean nearEnd = abs(pointerX - endOfLineX) <= thresholdX; // check if the pointer is near the end of the line
+  boolean nearTop = abs(pointerY - paragraphTopY) <= thresholdY; // check if the pointer is near the top of the paragraph
+  boolean nearBottom = abs(pointerY - paragraphBottomY) <= thresholdY; // check if the pointer is near the bottom of the paragraph
+  
   if ((nearStart || nearEnd) && !isEOLBeepPlayed)
   {
-    Beep.stop();
-    Beep.play();
+    EOLBeep.stop();
+    EOLBeep.play();
     isEOLBeepPlayed = true; // set the flag to true to prevent multiple beeps
   }
   else if (!nearStart && !nearEnd)
   {
     isEOLBeepPlayed = false; // reset the flag when the pointer is not near the start or end
   }
+
+  if ((nearTop || nearBottom) && !isBeyondTopnBottom)
+  {
+    TnBBeep.stop();
+    TnBBeep.play();
+    isBeyondTopnBottom = true; // set the flag to true to prevent multiple beeps
+  }
+  else if (!nearTop && !nearBottom)
+  {
+    isBeyondTopnBottom = false; // reset the flag when the pointer is not near the top or bottom
+  }
 }
+
 void draw()
 {
   // Background color adjustment
@@ -291,11 +307,13 @@ void draw()
     /* WHEN THE SLIDING WINDOW FEATURE IS ACTIVE */
     else if (defaultMode == Mode.slidingWindow)
     { 
+      slidingWindowFrequency = gui.sliderInt("Braille Settings/Sliding Window Frequency", defaultSlidingWindow_FREQ, 1, 8); // set the sliding window frequency
+
       /*First Pass" Draw the text */
       drawText(currentLine, lineXStart, lineY + boxHeightVal / 2); // draw the text
       
-      int slidingWindowSize = defaultSlidingWindow_FREQ; // 
-      int leftRightChars;
+      int slidingWindowSize = slidingWindowFrequency; // set the sliding window size
+      int leftRightChars;  // number of characters to the left and right of the current character
       if (slidingWindowSize % 2 != 0)
       {
         leftRightChars = (slidingWindowSize - 1) / 2;
@@ -466,6 +484,8 @@ void draw()
   int activeLineIndex = (int) constrain((mouseY - textYStart) / (lineHeight + extraSpacing), 0, lines.length - 1); // calculate the active line index
   float pointerX = constrain(mouseX, margin, margin + textWidth(lines[activeLineIndex])); // constrain the pointer X position 
   float pointerY = textYStart + activeLineIndex * (lineHeight + extraSpacing) + lineHeight / 3; // calculate the pointer Y position
+  float paragraphTopY = textYStart; // set the paragraph top Y position
+  float paragraphBottomY = textYStart + (lines.length) * (lineHeight + extraSpacing); // set the paragraph bottom Y position
   
   if (pointerMode.equals("Square"))
   {
@@ -490,8 +510,7 @@ void draw()
   }
   
   // Handle the end of line beep
-  float threshold = 8; // threshold for the ends of line beep
-  playEOLBeep(pointerX, margin, margin + textWidth(lines[activeLineIndex]), threshold, EOLBeep); // play the end of line beep
+  float thresholdX = 8; // threshold for the ends of line beep in pixels
+  float thresholdY = 2; // threshold for the ends of line beep in pixels
+  playBoundaryBeeps(pointerX, mouseY, margin, margin + textWidth(lines[activeLineIndex]), paragraphTopY, paragraphBottomY, thresholdX, thresholdY, EOLBeep, TopandBottomBeep); // play the end of line beep
 }
-
-
