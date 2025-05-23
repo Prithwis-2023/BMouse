@@ -13,9 +13,6 @@ Mode defaultMode = Mode.charGrouping; // default mode
  * 2. wordGrouping: displays words in groups  of the word length
  * 3. slidingWindow: displays a sliding window of characters
  */
-//final boolean slidingWindow = false;  // sliding window feature toggle
-//final boolean charGrouping = false;  // character grouping feature toggle
-//final boolean wordGrouping = true;  // word grouping feature toggle
 
 final int defaultCharGrouping_FREQ = 5;  // character group frequency for charGrouping feature
 final int defaultSlidingWindow_FREQ = 8;  // sliding window frequency for slidingWindow feature. Can be 1, 3, 5 or 8
