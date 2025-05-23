@@ -6,8 +6,8 @@ import processing.sound.*;
 
 
 // TODO: Change the constants used to set the mode into an enum.   
-//enum byte {CG, WG, SW} 
-//start = WG; // default mode
+enum Mode {charGrouping, wordGrouping, slidingWindow}; 
+mode defaultMode = Mode.wordGrouping; // default mode
 
 // constants
 /* we have three display modes:
@@ -65,7 +65,6 @@ void setup()
       .setLoadLatestSaveOnStartup(false)
     ); 
        
-    String portName = Serial.list()[0];
     myPort = new Serial(this, portName, 9600);
     
     EOLBeep = new SoundFile(this, "endOfLineBeep.mp3");
@@ -248,7 +247,7 @@ void draw()
     String currentLine = lines[i]; // get the current line  
   
     /* WHEN THE CHARACTER GROUPING FEATURE IS ACTIVE */
-    if (slidingWindowState.equals("Off") && wordGroupingState.equals("Off"))
+    if (defaultMode == Mode.charGrouping)
     {
       /* First Pass: draw the text */ 
       drawText(currentLine, lineXStart, lineY + boxHeightVal / 2); // draw the text
@@ -292,7 +291,7 @@ void draw()
     }
 
     /* WHEN THE SLIDING WINDOW FEATURE IS ACTIVE */
-    else if (slidingWindowState.equals("On") && wordGroupingState.equals("Off"))
+    else if (defaultMode == Mode.slidingWindow)
     { 
       /*First Pass" Draw the text */
       drawText(currentLine, lineXStart, lineY + boxHeightVal / 2); // draw the text
@@ -426,7 +425,9 @@ void draw()
         visibleEndX = lineXStart; // update the visible end X position
       }
     }
-    else if (slidingWindowState.equals("Off") && wordGroupingState.equals("On"))
+
+    /* WHEN THE WORD GROUPING FEATURE IS ACTIVE */
+    else if (defaultMode == Mode.wordGrouping)
     {
       /* FIRST PASS: Draw the text */
       drawText(currentLine, lineXStart, lineY + boxHeightVal / 2);
