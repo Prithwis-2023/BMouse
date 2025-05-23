@@ -7,7 +7,7 @@ import processing.sound.*;
 
 // TODO: Change the constants used to set the mode into an enum.   
 enum Mode {charGrouping, wordGrouping, slidingWindow}; 
-mode defaultMode = Mode.wordGrouping; // default mode
+Mode defaultMode = Mode.charGrouping; // default mode
 
 // constants
 /* we have three display modes:
@@ -112,30 +112,6 @@ String[] wrapText(String text, float maxWidth)
     return lines.toArray(new String[0]);
 }
 
-// function to detect the mode of operation
-void detectMode(boolean slidingWindowToggle, boolean charGroupingToggle, boolean wordGroupingToggle)
-{
-  if ((!slidingWindowToggle && charGroupingToggle) || (slidingWindowToggle && !charGroupingToggle) || (wordGroupingToggle && !slidingWindowToggle && !charGroupingToggle))
-  {
-    if (charGroupingToggle == true)
-    {
-      charGroupingFrequency = gui.sliderInt("Braille Settings/Character Grouping Frequency", defaultCharGrouping_FREQ, 1, 8);
-      slidingWindowState = gui.radio("Braille Settings/Sliding Window", new String[] {"Off", "On"}, "Off");
-      wordGroupingState = gui.radio("Braille Settings/Word Grouping", new String[] {"Off", "On"}, "Off");
-    }
-    else if (slidingWindowToggle == true)
-    {
-      slidingWindowState = gui.radio("Braille Settings/Sliding Window", new String[] {"Off", "On"}, "On");
-      wordGroupingState = gui.radio("Braille Settings/Word Grouping", new String[] {"Off", "On"}, "Off");
-    }
-    else if (wordGroupingToggle == true)
-    {
-      wordGroupingState = gui.radio("Braille Settings/Word Grouping", new String[] {"Off", "On"}, "On");
-      slidingWindowState = gui.radio("Braille Settings/Sliding Window", new String[] {"Off", "On"}, "Off");
-    }
-  }
-}
-
 void drawText(String presentLine, float PosX, float PosY)
 {
   fill(255); // set the text color to white
@@ -177,8 +153,29 @@ void draw()
   // Background color adjustment
   background(gui.colorPicker("Background/Color").hex);
 
-  // detect the mode of operation
-  detectMode(slidingWindow, charGrouping, wordGrouping);
+  // GUI for the Mode Selection
+  String mode = gui.radio(
+    "Braille Settings/Mode",
+    new String[] {"Character Grouping", "Word Grouping", "Sliding Window"},
+    "Character Grouping"
+  );
+
+  if (mode.equals("Character Grouping"))
+  {
+    defaultMode = Mode.charGrouping;
+  }
+  else if (mode.equals("Word Grouping"))
+  {
+    defaultMode = Mode.wordGrouping;
+  }
+  else if (mode.equals("Sliding Window"))
+  {
+    defaultMode = Mode.slidingWindow;
+  }
+  else
+  {
+    defaultMode = Mode.charGrouping;
+  }
 
   // Handle the text input 
   userInput = gui.text("Text/Input", DTEXT);
@@ -249,6 +246,9 @@ void draw()
     /* WHEN THE CHARACTER GROUPING FEATURE IS ACTIVE */
     if (defaultMode == Mode.charGrouping)
     {
+      // set the character grouping frequency
+      charGroupingFrequency = gui.sliderInt("Braille Settings/Character Grouping Frequency", defaultCharGrouping_FREQ, 1, 8);
+      
       /* First Pass: draw the text */ 
       drawText(currentLine, lineXStart, lineY + boxHeightVal / 2); // draw the text
 
@@ -462,20 +462,20 @@ void draw()
   }
 
   // POINTER: Create and handle pointer mode using radio buttons
-  String mode = gui.radio("Pointer/Mode", new String[] {"Square", "Circle"});
+  String pointerMode = gui.radio("Pointer/Mode", new String[] {"Square", "Circle"});
 
   // draw the pointer based on the selection mode
   int activeLineIndex = (int) constrain((mouseY - textYStart) / (lineHeight + extraSpacing), 0, lines.length - 1); // calculate the active line index
   float pointerX = constrain(mouseX, margin, margin + textWidth(lines[activeLineIndex])); // constrain the pointer X position 
   float pointerY = textYStart + activeLineIndex * (lineHeight + extraSpacing) + lineHeight / 3; // calculate the pointer Y position
   
-  if (mode.equals("Square"))
+  if (pointerMode.equals("Square"))
   {
     noStroke();
     fill(255, 0, 0); // set the pointer color to red
     rect(pointerX, pointerY, 20, 20); // draw the square pointer
   }
-  else if (mode.equals("Circle"))
+  else if (pointerMode.equals("Circle"))
   {
     noStroke();
     fill(0, 0, 255); // set the pointer color to red
