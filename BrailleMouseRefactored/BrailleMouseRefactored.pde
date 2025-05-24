@@ -69,8 +69,6 @@ void settings()
 // Setup function - GUI, Serial, Sound
 void setup()
 {
-  //fullScreen(P2D); // Ensures compatibility with LazyGui
-
   // Initialize LazyGui
   gui = new LazyGui(this, new LazyGuiSettings()
     .setAutosaveOnExit(false)
