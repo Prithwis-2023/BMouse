@@ -3,6 +3,10 @@ import com.krab.lazy.*;
 import processing.serial.*;
 import processing.sound.*;
 
+// Constants for the window size
+final int Width = 0;  // width of the window in pixels
+final int Height = 0; // height of the window in pixels
+
 // create an enum for the modes
 enum Mode {charGrouping, wordGrouping, slidingWindow}; 
 Mode defaultMode = Mode.charGrouping; // default mode
@@ -42,29 +46,42 @@ String lastSentGroup = "";
 // Clears GUI Data
 void clearGUIData()
 {
-    File autoSaveFile = new File(dataPath("BrailleMouseRefactored/saves/auto.json"));
-    if (autoSaveFile.exists()) 
-    {
-        autoSaveFile.delete();
-    }
+  File autoSaveFile = new File(dataPath("BrailleMouseRefactored/saves/auto.json"));
+  if (autoSaveFile.exists()) 
+  {
+      autoSaveFile.delete();
+  }
+}
+
+// Settings function - set the size of the window
+void settings()
+{
+  if (Width > 0 && Height > 0)
+  {
+    size(Width, Height, P2D); // set the size of the window in pixels
+  }
+  else
+  {
+    fullScreen(P2D); // set the window to full screen
+  }
 }
 
 // Setup function - GUI, Serial, Sound
 void setup()
 {
-    fullScreen(P2D); // Ensures compatibility with LazyGui
+  //fullScreen(P2D); // Ensures compatibility with LazyGui
 
-    // Initialize LazyGui
-    gui = new LazyGui(this, new LazyGuiSettings()
-      .setAutosaveOnExit(false)
-      .setLoadLatestSaveOnStartup(false)
-    ); 
-       
-    myPort = new Serial(this, portName, 9600);
-    
-    EOLBeep = new SoundFile(this, "endOfLineBeep.mp3");
-    COLBeep = new SoundFile(this, "ChangeOfLine.mp3");
-    TopandBottomBeep = new SoundFile(this, "UpandDownBeep.mp3");
+  // Initialize LazyGui
+  gui = new LazyGui(this, new LazyGuiSettings()
+    .setAutosaveOnExit(false)
+    .setLoadLatestSaveOnStartup(false)
+  ); 
+  
+  myPort = new Serial(this, portName, 9600);
+  
+  EOLBeep = new SoundFile(this, "endOfLineBeep.mp3");
+  COLBeep = new SoundFile(this, "ChangeOfLine.mp3");
+  TopandBottomBeep = new SoundFile(this, "UpandDownBeep.mp3");
 }
 
 // function to send the group to the Arduino
@@ -86,26 +103,26 @@ void sendToBrailleGroup(String group, String startMarker, String endMarker)
 // function to auto generate multiple lines of text
 String[] wrapText(String text, float maxWidth)
 {
-    String[] words = splitTokens(text);
-    ArrayList<String> lines = new ArrayList<String>();
-    String currentLine = "";
-    
-    for (String word : words)
-    {
-        if (textWidth(currentLine + word) > maxWidth)
-        {
-            lines.add(currentLine);
-            currentLine = "";
-        }
-        currentLine += word + " ";
-    }
-    
-    if (currentLine.length() > 0)
-    {
-        lines.add(currentLine);
-    }
-    
-    return lines.toArray(new String[0]);
+  String[] words = splitTokens(text);
+  ArrayList<String> lines = new ArrayList<String>();
+  String currentLine = "";
+  
+  for (String word : words)
+  {
+      if (textWidth(currentLine + word) > maxWidth)
+      {
+          lines.add(currentLine);
+          currentLine = "";
+      }
+      currentLine += word + " ";
+  }
+  
+  if (currentLine.length() > 0)
+  {
+      lines.add(currentLine);
+  }
+  
+  return lines.toArray(new String[0]);
 }
 
 void drawText(String presentLine, float PosX, float PosY)
@@ -160,7 +177,7 @@ void playBoundaryBeeps(float pointerX, float pointerY, float startOfLineX, float
 }
 
 void draw()
-{
+{  
   // Background color adjustment
   background(gui.colorPicker("Background/Color").hex);
 
