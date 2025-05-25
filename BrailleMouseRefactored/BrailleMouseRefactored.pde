@@ -3,10 +3,6 @@ import com.krab.lazy.*;
 import processing.serial.*;
 import processing.sound.*;
 
-// Constants for the window size
-final int Width = 0;  // width of the window in pixels
-final int Height = 0; // height of the window in pixels
-
 // create an enum for the modes
 enum Mode {charGrouping, wordGrouping, slidingWindow}; 
 Mode defaultMode = Mode.charGrouping; // default mode
@@ -53,22 +49,18 @@ void clearGUIData()
   }
 }
 
-// Settings function - set the size of the window
-void settings()
+// Settings function - set the window size and renderer
+void settings() 
 {
-  if (Width > 0 && Height > 0)
-  {
-    size(Width, Height, P2D); // set the size of the window in pixels
-  }
-  else
-  {
-    fullScreen(P2D); // set the window to full screen
-  }
+  size(1920, 1080, P2D); 
 }
 
 // Setup function - GUI, Serial, Sound
 void setup()
 {
+  //fullScreen(P2D); // set the window to full screen
+  surface.setResizable(true);
+
   // Initialize LazyGui
   gui = new LazyGui(this, new LazyGuiSettings()
     .setAutosaveOnExit(false)
