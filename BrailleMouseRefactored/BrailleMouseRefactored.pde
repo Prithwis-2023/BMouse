@@ -39,7 +39,7 @@ int slidingWindowFrequency; // stores the sliding window frequency
 String userInput = "";
 String lastSentGroup = "";
 PFont font; // initialize the font
-
+int lastVerticalZone = 0; // -1 for above boundary, 0 for inside and 1 for below the boundary line
 
 // Clears GUI Data
 void clearGUIData()
@@ -73,7 +73,7 @@ void setup()
   
   EOLBeep = new SoundFile(this, "endOfLineBeep.mp3");
   COLBeep = new SoundFile(this, "ChangeOfLine.mp3");
-  TopandBottomBeep = new SoundFile(this, "UpandDownBeep.mp3");
+  TopandBottomBeep = new SoundFile(this, "endOfLineBeep.mp3");
   
   String fontFileName = "MapleMono-SemiBold.otf";
   font = createFont(fontFileName, 32);
@@ -142,13 +142,39 @@ void drawGroupBox(float groupX, float lineY, float groupWidth, float lineHeight)
   rect(groupX, lineY, groupWidth, lineHeight, 10);
 }
 
-void playBoundaryBeeps(float pointerX, float pointerY, float startOfLineX, float endOfLineX, float paragraphTopY, float paragraphBottomY, float thresholdX, float thresholdY, SoundFile EOLBeep, SoundFile TnBBeep)
+void playBoundaryBeeps(float pointerX, float pointerY, float startOfLineX, float endOfLineX, float paragraphTopY, float paragraphBottomY, float thresholdX, SoundFile EOLBeep, SoundFile TnBBeep)
 {
   boolean nearStart = abs(pointerX - startOfLineX) <= thresholdX; // check if the pointer is near the start of the line
   boolean nearEnd = abs(pointerX - endOfLineX) <= thresholdX; // check if the pointer is near the end of the line
-  boolean nearTop = abs(pointerY - paragraphTopY) <= thresholdY; // check if the pointer is near the top of the paragraph
-  boolean nearBottom = abs(pointerY - paragraphBottomY) <= thresholdY; // check if the pointer is near the bottom of the paragraph
-  
+  boolean atTop = pointerY <= paragraphTopY; // check if the pointer is near the top of the paragraph
+  boolean atBottom = pointerY >= paragraphBottomY; // check if the pointer is near the bottom of the paragraph
+
+  // beep for the vertical movement
+  int currentVerticalZone;
+
+  if (atTop)
+  {
+    currentVerticalZone = -1;
+  }
+  else if (atBottom)
+  {
+    currentVerticalZone = 1;
+  }
+  else
+  {
+    currentVerticalZone = 0;
+  }
+
+  // Only play sound when entering from above or below
+  if ((lastVerticalZone == -1 && currentVerticalZone == 0) || (lastVerticalZone == 1 && currentVerticalZone == 0) || (lastVerticalZone == 0 && currentVerticalZone == -1) || (lastVerticalZone == 0 && currentVerticalZone == 1)) 
+  {
+    TnBBeep.stop();
+    TnBBeep.play();
+  }
+  // Update the last sector
+  lastVerticalZone = currentVerticalZone;
+
+  // beep for the horizontal movement
   if ((nearStart || nearEnd) && !isEOLBeepPlayed)
   {
     EOLBeep.stop();
@@ -158,17 +184,6 @@ void playBoundaryBeeps(float pointerX, float pointerY, float startOfLineX, float
   else if (!nearStart && !nearEnd)
   {
     isEOLBeepPlayed = false; // reset the flag when the pointer is not near the start or end
-  }
-
-  if ((nearTop || nearBottom) && !isBeyondTopnBottom)
-  {
-    TnBBeep.stop();
-    TnBBeep.play();
-    isBeyondTopnBottom = true; // set the flag to true to prevent multiple beeps
-  }
-  else if (!nearTop && !nearBottom)
-  {
-    isBeyondTopnBottom = false; // reset the flag when the pointer is not near the top or bottom
   }
 }
 
@@ -495,6 +510,5 @@ void draw()
   
   // Handle the end of line beep
   float thresholdX = 8; // threshold for the ends of line beep in pixels
-  float thresholdY = 2; // threshold for the ends of line beep in pixels
-  playBoundaryBeeps(pointerX, mouseY, margin, margin + textWidth(lines[activeLineIndex]), paragraphTopY, paragraphBottomY, thresholdX, thresholdY, EOLBeep, TopandBottomBeep); // play the end of line beep
+  playBoundaryBeeps(pointerX, mouseY, margin, margin + textWidth(lines[activeLineIndex]), paragraphTopY, paragraphBottomY, thresholdX, EOLBeep, TopandBottomBeep); // play the end of line beep
 }
