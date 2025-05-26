@@ -38,6 +38,8 @@ int charGroupingFrequency; // stores the character grouping frequency
 int slidingWindowFrequency; // stores the sliding window frequency
 String userInput = "";
 String lastSentGroup = "";
+PFont font; // initialize the font
+
 
 // Clears GUI Data
 void clearGUIData()
@@ -72,6 +74,10 @@ void setup()
   EOLBeep = new SoundFile(this, "endOfLineBeep.mp3");
   COLBeep = new SoundFile(this, "ChangeOfLine.mp3");
   TopandBottomBeep = new SoundFile(this, "UpandDownBeep.mp3");
+  
+  String fontFileName = "MapleMono-SemiBold.otf";
+  font = createFont(fontFileName, 32);
+  textFont(font);
 }
 
 // function to send the group to the Arduino
@@ -204,32 +210,6 @@ void draw()
   float boxHeightVal = gui.sliderInt("Text Settings/Box Height", 0);
   float margin = gui.sliderInt("Text Settings/ Margin", 100);
 
-  PFont font;
-  String fontStyle = gui.radio(
-    "Text Settings/Font Style",
-    new String[] {
-      "MapleMono-Bold",
-      "MapleMono-BoldItalic",
-      "MapleMono-ExtraBold",
-      "MapleMono-ExtraBoldItalic",
-      "MapleMono-ExtraLight",
-      "MapleMono-ExtraLightItalic",
-      "MapleMono-Italic",
-      "MapleMono-Light",
-      "MapleMono-LightItalic",
-      "MapleMono-Medium",
-      "MapleMono-MediumItalic",
-      "MapleMono-Regular",
-      "MapleMono-SemiBold",
-      "MapleMono-SemiBoldItalic",
-      "MapleMono-Thin",
-      "MapleMono-ThinItalic"
-    },
-    "MapleMono-SemiBold"
-  );
-  String fontFileName = fontStyle + ".otf";
-  font = createFont(fontFileName, 32);
-  textFont(font);
 
   // transformation of the text into lines
   float maxWidth = width - 2 * margin;
