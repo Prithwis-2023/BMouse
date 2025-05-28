@@ -251,8 +251,6 @@ void draw()
       currentLineIndex = i;           // set the current line index
     }
     float lineXStart = margin;        // set the line X position (left end)
-    float visibleStartX = lineXStart; // initializa the visible start X position
-    float visibleEndX = lineXStart;   // initialize the visible end X position
   
     String currentLine = lines[i]; // get the current line  
   
@@ -299,7 +297,6 @@ void draw()
         }
 
         lineXStart += groupWidth; // update the group X position for the next group
-        visibleEndX = lineXStart; // update the visible start X position
       }
     }
 
@@ -437,7 +434,6 @@ void draw()
           charX += charWidth;
         }
         lineXStart += groupWidthBoundingBox;
-        visibleEndX = lineXStart; // update the visible end X position
       }
     }
 
@@ -471,7 +467,6 @@ void draw()
           }
         }
         lineXStart += wordWidth + textWidth(' '); // update the line X position for the next word
-        visibleEndX = lineXStart; // update the visible end X position
       }
     }
   }
