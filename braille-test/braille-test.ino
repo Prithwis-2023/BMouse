@@ -16,6 +16,9 @@ bool newWordAvailable = false;
 int scrollIndex = 0;
 int scrollTimer = 0;
 
+char digits[10] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
+char alphabets[10] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'};
+
 void setup()
 {
   Serial.begin(9600);
@@ -57,7 +60,14 @@ ISR(TIMER2_COMPA_vect) // timer 2 interrupt
         // word is short
         for (int i = 0; i < wordLength; i++)
         {
-          display.writeCell(currentWord[i], i);
+          if (isNumericandReplace(currentWord[i]) != '\0')
+          {
+            display.writeCell(isNumericandReplace(currentWord[i]), i);
+          }
+          else
+          {
+            display.writeCell(currentWord[i], i);
+          }
         }
         newWordAvailable = false; // done and no scrolling needed
       }
@@ -71,7 +81,14 @@ ISR(TIMER2_COMPA_vect) // timer 2 interrupt
           int charIndex = scrollIndex + i;
           if (charIndex < wordLength)
           {
-            display.writeCell(currentWord[charIndex], i);
+            if (isNumericandReplace(currentWord[charIndex]) != '\0')
+            {
+              display.writeCell(isNumericandReplace(currentWord[charIndex]), i);
+            }
+            else
+            {
+              display.writeCell(currentWord[charIndex], i);
+            }
           }
           else
           {
@@ -88,9 +105,6 @@ ISR(TIMER2_COMPA_vect) // timer 2 interrupt
         }
       }
     }
-    //display.clear();
-    //processBrailleGroup(currentWord, '|');
-    //newWordAvailable = false;
   }
 }
 
@@ -112,7 +126,7 @@ void loop()
         display.clear();
         newGroupReceived = false;
       }
-      if (incomingChar == '|')
+      if (incomingChar == '|')  // end marker for word grouping feature
       {
         currentWord = receivedData;
         scrollIndex = 0; // start from the beginning
@@ -122,9 +136,6 @@ void loop()
       {
         processBrailleGroup(receivedData, incomingChar);
       }
-
-      /*receivedData = "";
-      newGroupReceived = false;*/
     }
     else
     {
@@ -133,33 +144,53 @@ void loop()
   }
 }
 
-uint16_t charToBraille(char c)
+// uint16_t charToBraille(char c)
+// {
+//   for (int i = 0; i < 256; i++)
+//   {
+//     if (display._brailleChars[i] == c)
+//     {
+//       return (uint16_t)(0x2800 + i);
+//     }
+//   }
+//   return 0x2800; 
+// }
+
+char isNumericandReplace(char c)
 {
-  for (int i = 0; i < 256; i++)
+  for (int i = 0; i < 10; i++)
   {
-    if (display._brailleChars[i] == c)
+    if (c == digits[i])
     {
-      return (uint16_t)(0x2800 + i);
+      return alphabets[i];
+      break;
     }
   }
-  return 0x2800; 
+  return '\0';
 }
 
 void processBrailleGroup(String group, char c)
 {
   int groupLength = group.length(); 
 
-  if (c == '@')
+  if (c == '@') // end marker for character grouping feature
   {
     for (int i = 0; i < groupLength; i++)
     {
       if (i < CELL_COUNT) 
       {
-        display.writeCell(group[i], i);
+        if (isNumericandReplace(group[i]) != '\0')
+        {
+          display.writeCell(isNumericandReplace(group[i]), i);
+        }
+        else
+        {
+          display.writeCell(group[i], i);
+        }
       }
     }
   }
-  else if (c == '+')
+  else if (c == '+') // end marker for sliding window feature
   {
     int middleIndex = (groupLength - 1) / 2;
 
@@ -168,39 +199,58 @@ void processBrailleGroup(String group, char c)
     
     for (int i = 0; i < middleIndex; i++) 
     {
+      if (isNumericandReplace(group[i]) != '\0')
+      {
+        display.writeCell(isNumericandReplace(group[i]), leftCellIndex + i);
+      }
+      else
+      {
         display.writeCell(group[i], leftCellIndex + i);
+      }
     }
-
     // Middle character at index 3
-    display.writeCell(group[middleIndex], 3);
-
+    if (isNumericandReplace(group[middleIndex]) != '\0')
+    {
+      display.writeCell(isNumericandReplace(group[middleIndex]), 3);
+    }
+    else
+    {
+      display.writeCell(group[middleIndex], 3);
+    }
     // Right side: Start from index 4 and continue
     for (int i = middleIndex + 1; i < groupLength; i++) 
     {
+      if (isNumericandReplace(group[i]) != '\0')
+      {
+        display.writeCell(isNumericandReplace(group[i]), 3 + (i - middleIndex));
+      }
+      else 
+      {
         display.writeCell(group[i], 3 + (i - middleIndex));
+      }
     }
   }
-  else if (c == '|')
-  {
-    uint16_t charsArray[groupLength];
+  // else if (c == '|')
+  // {
+  //   uint16_t charsArray[groupLength];
 
-    if (groupLength <= CELL_COUNT)
-    {
-      for (int i = 0; i < groupLength; i++)
-      {
-        display.writeCell(group[i], i);
-      }
-    }
-    else if (groupLength > CELL_COUNT)
-    {
-      for (int i = 0; i < groupLength; i++)
-      {
-        char c = tolower(group.charAt(i));
-        uint16_t unicode = charToBraille(c);
-        charsArray[i] = unicode;
-      }
+  //   if (groupLength <= CELL_COUNT)
+  //   {
+  //     for (int i = 0; i < groupLength; i++)
+  //     {
+  //       display.writeCell(group[i], i);
+  //     }
+  //   }
+  //   else if (groupLength > CELL_COUNT)
+  //   {
+  //     for (int i = 0; i < groupLength; i++)
+  //     {
+  //       char c = tolower(group.charAt(i));
+  //       uint16_t unicode = charToBraille(c);
+  //       charsArray[i] = unicode;
+  //     }
       
-      display.writeCells(charsArray, groupLength);
-    }
-  }
+  //     display.writeCells(charsArray, groupLength);
+  //   }
+  // }
 }
