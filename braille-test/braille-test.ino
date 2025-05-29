@@ -19,8 +19,12 @@ int scrollTimer = 0;
 char digits[10] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
 char alphabets[10] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'};
 
+bool lastButtonState = HIGH;
+
 void setup()
 {
+  pinMode(12, INPUT_PULLUP);
+
   Serial.begin(9600);
   display.begin();
   display.clear();
@@ -110,6 +114,14 @@ ISR(TIMER2_COMPA_vect) // timer 2 interrupt
 
 void loop()
 {
+  bool buttonState = digitalRead(12);
+  if (lastButtonState == HIGH && buttonState == LOW)
+  {
+    Serial.println("NEXT");
+    delay(200); // debounce delay
+  }
+  lastButtonState = buttonState;
+  
   while (Serial.available() > 0)
   {
     char incomingChar = Serial.read();

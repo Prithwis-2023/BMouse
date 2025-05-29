@@ -16,7 +16,11 @@ Mode defaultMode = Mode.charGrouping; // default mode
 
 final int defaultCharGrouping_FREQ = 5;  // character group frequency for charGrouping feature
 final int defaultSlidingWindow_FREQ = 8;  // sliding window frequency for slidingWindow feature. Can be 1, 3, 5 or 8
-final String DTEXT = "Welcome to a delightful afternoon of exploration and creativity!";  // custom text
+
+
+int textIndex = 0; // index for the lines of the sample text
+String DTEXT = "This is it. The fight of our lives — and we're going to win. Whatever it takes.";  // custom text
+String[] lines;
 
 // Sound
 SoundFile EOLBeep; 
@@ -28,6 +32,7 @@ boolean isBeyondTopnBottom = false;
 // Serial Port
 Serial myPort;
 String portName = Serial.list()[0];  // default port
+
 
 // GUI
 LazyGui gui;
@@ -217,7 +222,8 @@ void draw()
   }
 
   // Handle the text input 
-  userInput = gui.text("Text/Input", DTEXT);
+  userInput = DTEXT; // display the text in the center of the screen
+  gui.text("Text/Input", DTEXT);
 
   // Text Settings
   float extraSpacing = gui.sliderInt("Text Settings/Line Spacing", 10);
@@ -228,7 +234,7 @@ void draw()
 
   // transformation of the text into lines
   float maxWidth = width - 2 * margin;
-  String[] lines = wrapText(userInput, maxWidth);
+  lines = wrapText(userInput, maxWidth);
 
   // Text Formatting 
   fill (255);                   // set the text colot to white
@@ -506,4 +512,21 @@ void draw()
   // Handle the end of line beep
   float thresholdX = 8; // threshold for the ends of line beep in pixels
   playBoundaryBeeps(pointerX, mouseY, margin, margin + textWidth(lines[activeLineIndex]), paragraphTopY, paragraphBottomY, thresholdX, EOLBeep, TopandBottomBeep); // play the end of line beep
+}
+
+
+void serialEvent(Serial myPort)
+{
+  String inString = myPort.readStringUntil('\n'); // read the string until the newline character
+  if (inString != null) 
+  {
+    inString = trim(inString); // trim the string to remove any leading or trailing whitespace
+    println("Received the line: " + inString); // Debugging log
+    if (inString.equals("NEXT"))
+    {
+      textIndex = (textIndex + 1) % lines.length;
+      DTEXT = lines[textIndex]; // update the text to the next sample text
+      println("Switched to new text: " + DTEXT);
+    }
+  }
 }
