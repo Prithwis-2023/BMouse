@@ -19,7 +19,8 @@ final int defaultSlidingWindow_FREQ = 8;  // sliding window frequency for slidin
 
 
 int textIndex = 0; // index for the lines of the sample text
-String DTEXT = "This is it. The fight of our lives — and we're going to win. Whatever it takes.";  // custom text
+String DTEXT = "This is it. \n The fight of our lives and we're going to win. \n Whatever it takes.";  // custom text
+// String DTEXT = " Hello  World";  // custom text
 String[] lines;
 
 // Sound
@@ -101,23 +102,53 @@ void sendToBrailleGroup(String group, String startMarker, String endMarker)
   delay(1);
 }
 
+void printArrayList(String[] list)
+{
+  for (String item : list)
+  {
+    println("DBG> " + item);
+  }
+}
+
 // function to auto generate multiple lines of text
 String[] wrapText(String text, float maxWidth)
 {
-  String[] words = splitTokens(text);
+  String[] words = splitTokens(text, " ");
   ArrayList<String> lines = new ArrayList<String>();
   String currentLine = "";
   
+  printArrayList(words); // Debugging output to see the words array
+
+  // Fill a line with words until it exceeds the max width
   for (String word : words)
   {
+
+    if (word.contains(" "))
+    {
+      continue; // skip empty words
+    }
+
+    if (word.charAt(0) == '\n')
+    {
+      println("New line detected, adding current line to lines.");
+      lines.add(currentLine);
+      currentLine = "";
+
+    } else {
       if (textWidth(currentLine + word) > maxWidth)
       {
-          lines.add(currentLine);
-          currentLine = "";
+        lines.add(currentLine);
+        currentLine = "";
       }
+
+      
       currentLine += word + " ";
+    }
+
+    
   }
   
+  // Add the last line if it has content 
   if (currentLine.length() > 0)
   {
       lines.add(currentLine);
@@ -247,6 +278,7 @@ void draw()
   
   int currentLineIndex = -1; // initialize the current line index
 
+  // TODO: add three buttons to switch between the lines. organize serial event and make button as a different mode
   // iterating through the lines of text
   for (int i = 0; i < lines.length; i++)
   {
