@@ -19,11 +19,15 @@ int scrollTimer = 0;
 char digits[10] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
 char alphabets[10] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'};
 
-bool lastButtonState = HIGH;
+bool lastButtonStatePrev = HIGH;
+bool lastButtonStateIdle = HIGH;
+bool lastButtonStateNext = HIGH;
 
 void setup()
 {
-  pinMode(12, INPUT_PULLUP);
+  pinMode(11, INPUT_PULLUP); // the previous button
+  pinMode(12, INPUT_PULLUP); // idle button (TBD)
+  pinMode(13, INPUT_PULLUP); // next button
 
   Serial.begin(9600);
   display.begin();
@@ -114,13 +118,30 @@ ISR(TIMER2_COMPA_vect) // timer 2 interrupt
 
 void loop()
 {
-  bool buttonState = digitalRead(12);
-  if (lastButtonState == HIGH && buttonState == LOW)
+  bool buttonStatePrev = digitalRead(11);
+  bool buttonStateIdle = digitalRead(12);
+  bool buttonStateNext = digitalRead(13);
+  
+  if (lastButtonStatePrev == HIGH && buttonStatePrev == LOW)
+  {
+    Serial.println("PREV");
+    delay(200); // debounce delay
+  }
+  else if (lastButtonStateIdle == HIGH && buttonStateIdle == LOW)
+  {
+    Serial.println("IDLE");
+    delay(200); // debounce delay
+  }
+  else if (lastButtonStateNext == HIGH && buttonStateNext == LOW)
   {
     Serial.println("NEXT");
     delay(200); // debounce delay
   }
-  lastButtonState = buttonState;
+  lastButtonStatePrev = buttonStatePrev;
+  lastButtonStateIdle = buttonStateIdle;
+  lastButtonStateNext = buttonStateNext;
+  
+  // Read serial input
   
   while (Serial.available() > 0)
   {
