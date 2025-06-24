@@ -3,10 +3,10 @@ import com.krab.lazy.*;
 import processing.serial.*;
 import processing.sound.*;
 
-// create an enum for the modes
-enum Mode {charGrouping, wordGrouping, slidingWindow}; 
+// create enums for the text display modes and the features
+enum Feature {charGrouping, wordGrouping, slidingWindow}; 
 enum textDisplayMode {buttonMode, normalMode}; // create an enum for the text display modes
-Mode defaultMode = Mode.charGrouping; // default mode
+Feature defaultFeature = Feature.charGrouping; // default feature
 textDisplayMode defaultDisplayMode = textDisplayMode.normalMode; // default text display mode
 
 // constants
@@ -21,8 +21,7 @@ final int defaultSlidingWindow_FREQ = 8;  // sliding window frequency for slidin
 
 
 int textIndex = 0; // index for the lines of the sample text
-String DTEXT = "This is it. \n The fight of our lives and we're going to win. \n Whatever it takes. \n And Hello World!";  // custom text
-// String DTEXT = " Hello  World";  // custom text
+String DTEXT = "This is it. \n The fight of our lives and we're going to win. Bla Bla Black Sheep have you any wool.\n Whatever it takes. \n And Hello World!";  // custom text
 String[] lines;
 
 // Sound
@@ -112,53 +111,89 @@ void printArrayList(String[] list)
   }
 }
 
-// function to auto generate multiple lines of text
+// Function to auto generate multiple lines of text. 
+// Returns an array of strings.
+// This function is used to wrap the text into lines that fit within the specified width.
+// It splits the text into paragraphs (based on \n) and then wraps each paragraph into lines based on the maxWidth parameter.
+// It handles word wrapping and ensures that no line exceeds the specified width.
+// It also trims the lines to remove any leading or trailing whitespace.
 String[] wrapText(String text, float maxWidth)
 {
-  String[] words = splitTokens(text, " ");
-  ArrayList<String> lines = new ArrayList<String>();
-  String currentLine = "";
-  
-  //printArrayList(words); // Debugging output to see the words array
+  String[] paragraphs = splitTokens(text, "\n");
+  ArrayList<String> wrappedLines = new ArrayList<String>();
 
-  // Fill a line with words until it exceeds the max width
-  for (String word : words)
+  for(String para : paragraphs)
   {
+    String[] words = splitTokens(para, " ");
+    String currentLine = "";
 
-    if (word.contains(" "))
+    for (String word :  words)
     {
-      continue; // skip empty words
-    }
-
-    if (word.charAt(0) == '\n')
-    {
-      println("New line detected, adding current line to lines.");
-      lines.add(currentLine);
-      currentLine = "";
-
-    } else {
+      if (word.contains(" "))
+      {
+        continue; // skip empty words
+      }
       if (textWidth(currentLine + word) > maxWidth)
       {
-        lines.add(currentLine);
-        currentLine = "";
+        wrappedLines.add(currentLine.trim()); // add the current line to the list
+        currentLine = ""; // reset the current line
       }
-
-      
-      currentLine += word + " ";
+      currentLine += word + " "; // add the word to the current line
     }
 
-    
+    if (currentLine.length() > 0)
+    {
+      wrappedLines.add(currentLine.trim()); // add the last line if it has content
+    }
   }
-  
-  // Add the last line if it has content 
-  if (currentLine.length() > 0)
-  {
-      lines.add(currentLine);
-  }
-  
-  return lines.toArray(new String[0]);
-}
 
+  return wrappedLines.toArray(new String[0]);
+}
+//   String[] words = splitTokens(text, " ");
+//   ArrayList<String> lines = new ArrayList<String>();
+//   String currentLine = "";
+  
+//   //printArrayList(words); // Debugging output to see the words array
+
+//   // Fill a line with words until it exceeds the max width
+//   for (String word : words)
+//   {
+
+//     if (word.contains(" "))
+//     {
+//       continue; // skip empty words
+//     }
+
+//     if (word.charAt(0) == '\n')
+//     {
+//       println("New line detected, adding current line to lines.");
+//       lines.add(currentLine);
+//       currentLine = "";
+
+//     } else {
+//       if (textWidth(currentLine + word) > maxWidth)
+//       {
+//         lines.add(currentLine);
+//         currentLine = "";
+//       }
+
+      
+//       currentLine += word + " ";
+//     }
+
+    
+//   }
+  
+//   // Add the last line if it has content 
+//   if (currentLine.length() > 0)
+//   {
+//       lines.add(currentLine);
+//   }
+  
+//   return lines.toArray(new String[0]);
+// }
+
+// Function to draw the text on the screen
 void drawText(String presentLine, float PosX, float PosY)
 {
   fill(255); // set the text color to white
@@ -166,13 +201,13 @@ void drawText(String presentLine, float PosX, float PosY)
   text(presentLine, PosX, PosY); // draw the text
 }
 
-/*
-call this function from any mode, passing it:
-groupX: where it starts in x
-lineY: vertical position of the line
-groupWidth: measured width
-lineHeight: height of the line box 
-*/
+
+//call this function from any mode, passing it:
+//groupX: where it starts in x
+//lineY: vertical position of the line
+//groupWidth: measured width
+//lineHeight: height of the line box 
+// This function draws a group box around the text
 void drawGroupBox(float groupX, float lineY, float groupWidth, float lineHeight)
 {
   noFill();
@@ -180,27 +215,29 @@ void drawGroupBox(float groupX, float lineY, float groupWidth, float lineHeight)
   rect(groupX, lineY, groupWidth, lineHeight, 10);
 }
 
+// This function plays the boundary beeps when the pointer is near the start or end of the line
+// It also plays a beep when the pointer is at the top or bottom of the paragraph.
 void playBoundaryBeeps(float pointerX, float pointerY, float startOfLineX, float endOfLineX, float paragraphTopY, float paragraphBottomY, float thresholdX, SoundFile EOLBeep, SoundFile TnBBeep)
 {
   boolean nearStart = abs(pointerX - startOfLineX) <= thresholdX; // check if the pointer is near the start of the line
   boolean nearEnd = abs(pointerX - endOfLineX) <= thresholdX; // check if the pointer is near the end of the line
-  boolean atTop = pointerY <= paragraphTopY; // check if the pointer is near the top of the paragraph
-  boolean atBottom = pointerY >= paragraphBottomY; // check if the pointer is near the bottom of the paragraph
+  boolean atTop = (pointerY <= paragraphTopY); // check if the pointer is near the top of the paragraph
+  boolean atBottom = (pointerY >= paragraphBottomY); // check if the pointer is near the bottom of the paragraph
 
-  // beep for the vertical movement
+  /* Beep for the vertical movement */
   int currentVerticalZone;
 
   if (atTop)
   {
-    currentVerticalZone = -1;
+    currentVerticalZone = -1; // pointer is above the top boundary
   }
   else if (atBottom)
   {
-    currentVerticalZone = 1;
+    currentVerticalZone = 1; // pointer is below the bottom boundary
   }
   else
   {
-    currentVerticalZone = 0;
+    currentVerticalZone = 0; // pointer is inside the paragraph
   }
 
   // Only play sound when entering from above or below
@@ -209,10 +246,10 @@ void playBoundaryBeeps(float pointerX, float pointerY, float startOfLineX, float
     TnBBeep.stop();
     TnBBeep.play();
   }
-  // Update the last sector
+  // Update the last zone
   lastVerticalZone = currentVerticalZone;
 
-  // beep for the horizontal movement
+  /* Beep for the horizontal movement */
   if ((nearStart || nearEnd) && !isEOLBeepPlayed)
   {
     EOLBeep.stop();
@@ -225,35 +262,14 @@ void playBoundaryBeeps(float pointerX, float pointerY, float startOfLineX, float
   }
 }
 
+// Draw function - handles the GUI, text display, and serial communication
+// This function is called repeatedly to update the display and handle user input
 void draw()
 {  
   // Background color adjustment
   background(gui.colorPicker("Background/Color").hex);
-
-  // GUI for the Mode Selection
-  String mode = gui.radio(
-    "Braille Settings/Mode",
-    new String[] {"Character Grouping", "Word Grouping", "Sliding Window"},
-    "Character Grouping"
-  );
-
-  if (mode.equals("Character Grouping"))
-  {
-    defaultMode = Mode.charGrouping;
-  }
-  else if (mode.equals("Word Grouping"))
-  {
-    defaultMode = Mode.wordGrouping;
-  }
-  else if (mode.equals("Sliding Window"))
-  {
-    defaultMode = Mode.slidingWindow;
-  }
-  else
-  {
-    defaultMode = Mode.charGrouping;
-  }
-  // GUI for the Text Display Mode
+  
+  // GUI for the Display Mode
   String displayMode = gui.radio(
     "Text Display/Mode",
     new String[] {"Button Mode", "Normal Mode"},
@@ -272,6 +288,31 @@ void draw()
     defaultDisplayMode = textDisplayMode.normalMode;
   }
 
+  // GUI for the Feature Selection
+  String feature = gui.radio(
+    "Braille Settings/Feature",
+    new String[] {"Character Grouping", "Word Grouping", "Sliding Window"},
+    "Character Grouping"
+  );
+
+  if (feature.equals("Character Grouping"))
+  {
+    defaultFeature = Feature.charGrouping;
+  }
+  else if (feature.equals("Word Grouping"))
+  {
+    defaultFeature = Feature.wordGrouping;
+  }
+  else if (feature.equals("Sliding Window"))
+  {
+    defaultFeature = Feature.slidingWindow;
+  }
+  else
+  {
+    defaultFeature = Feature.charGrouping;
+  }
+
+
   // Handle the text input 
   userInput = DTEXT; // display the text in the center of the screen
   gui.text("Text/Input", DTEXT);
@@ -283,7 +324,7 @@ void draw()
   float margin = gui.sliderInt("Text Settings/ Margin", 100);
 
 
-  // transformation of the text into lines
+  // Transformation of the text into lines
   float maxWidth = width - 2 * margin;
   lines = wrapText(userInput, maxWidth);
 
@@ -298,9 +339,21 @@ void draw()
   
   int currentLineIndex = -1; // initialize the current line index
 
-  // TODO: add three buttons to switch between the lines. organize serial event and make button as a different mode
+
   if (defaultDisplayMode == textDisplayMode.buttonMode)
   {
+    /*float lineY = textYStart; // line Y position (top end)
+
+    float lineXStart = margin; // set the line X position (left end)
+
+    currentLineIndex = textIndex; // set the current line index to the text index
+    String currentLine = lines[textIndex]; // get the current line
+
+    if (defaultFeature == Feature.charGrouping)
+    {
+      charGroupingFrequency = gui.sliderInt("Braille Settings/Character Grouping Frequency", defaultCharGrouping_FREQ, 1, 8); // set the character grouping frequency
+      charGroupingFeature(currentLine, charGroupingFrequency, margin, lineY, lineHeight, boxHeightVal); // call the charGroupingFeature function
+    }*/
     drawText(lines[textIndex], margin, textYStart); // draw the text
   }
   else if (defaultDisplayMode == textDisplayMode.normalMode)
@@ -319,53 +372,15 @@ void draw()
       String currentLine = lines[i]; // get the current line  
     
       /* WHEN THE CHARACTER GROUPING FEATURE IS ACTIVE */
-      if (defaultMode == Mode.charGrouping)
+      if (defaultFeature == Feature.charGrouping)
       {
         // set the character grouping frequency
         charGroupingFrequency = gui.sliderInt("Braille Settings/Character Grouping Frequency", defaultCharGrouping_FREQ, 1, 8);
-        
-        /* First Pass: draw the text */ 
-        drawText(currentLine, lineXStart, lineY + boxHeightVal / 2); // draw the text
-
-        /* Second Pass: create the groups and draw the box around the text */
-        int groupSize = charGroupingFrequency; // set the group size
-        for (int j = 0; j < currentLine.length(); j += groupSize)
-        {
-          int endIndex = min(j + groupSize, currentLine.length());
-          String group = currentLine.substring(j, endIndex); // get the group of characters
-
-          // measure the width of the group
-          float groupWidth = 0;
-          for (int k = j; k < endIndex; k++)
-          {
-            groupWidth += textWidth(currentLine.charAt(k));
-          }
-          // prevent text overflow
-          if (lineXStart + groupWidth > width - margin)
-          {
-            println("Text Overflow Prevented!");
-            lineXStart = margin; // reset the line X position
-          }
-          // Draw bounding box
-          drawGroupBox(lineXStart, lineY, groupWidth, lineHeight);
-
-          /* Handle pointer interaction */
-          if (mouseX >= lineXStart && mouseX <= lineXStart + groupWidth && mouseY >= lineY && mouseY <= lineY + lineHeight)
-          {
-            if (!group.equals(lastSentGroup))
-            {
-              // send only if this is a new group
-              sendToBrailleGroup(group, "*", "@");
-              lastSentGroup = group; // update the last sent group
-            }
-          }
-
-          lineXStart += groupWidth; // update the group X position for the next group
-        }
+        charGroupingFeature(currentLine, charGroupingFrequency, margin, lineY, lineHeight, boxHeightVal); // call the charGroupingFeature function
       }
 
       /* WHEN THE SLIDING WINDOW FEATURE IS ACTIVE */
-      else if (defaultMode == Mode.slidingWindow)
+      else if (defaultFeature == Feature.slidingWindow)
       { 
         slidingWindowFrequency = gui.sliderInt("Braille Settings/Sliding Window Frequency", defaultSlidingWindow_FREQ, 1, 8); // set the sliding window frequency
 
@@ -502,7 +517,7 @@ void draw()
       }
 
       /* WHEN THE WORD GROUPING FEATURE IS ACTIVE */
-      else if (defaultMode == Mode.wordGrouping)
+      else if (defaultFeature == Feature.wordGrouping)
       {
         /* FIRST PASS: Draw the text */
         drawText(currentLine, lineXStart, lineY + boxHeightVal / 2);
@@ -597,5 +612,48 @@ void serialEvent(Serial myPort)
     {
       println("Idle command received. No action taken.");
     }
+  }
+}
+
+void charGroupingFeature(String line, int frequency, float margin, float lineTopEnd, float lineHeight, float boxHeight)
+{
+  float lineLeftEnd = margin; // set the line left end position
+
+  // First pass: draw the text
+  drawText(line, lineLeftEnd, lineTopEnd + boxHeight / 2); // draw the text by centering it vertically in the box 
+
+  // Second pass: create the groups and draw the box around the text
+  int groupSize = frequency; // set the group size
+  for (int j = 0; j < line.length(); j+= groupSize)
+  {
+    int endIndex = min(j + groupSize, line.length());
+    String group = line.substring(j, endIndex); // create the group of characters
+
+    // measure the width of the group
+    float groupWidth = 0;
+    for (int k = j; k < endIndex; k++)
+    {
+      groupWidth += textWidth(line.charAt(k));
+    }
+    // prevent text overflow
+    if (lineLeftEnd + groupWidth > width - margin)
+    {
+      println("Text Overflow Prevented!");
+      lineLeftEnd = margin; // reset the line X position
+    }
+
+    // Draw bounding box
+    drawGroupBox(lineLeftEnd, lineTopEnd, groupWidth, lineHeight);
+
+    // Sending the group to the Arduino
+    if (mouseX >= lineLeftEnd && mouseX <= lineLeftEnd + groupWidth && mouseY >= lineTopEnd && mouseY <= lineTopEnd + lineHeight)
+    {
+      if (!group.equals(lastSentGroup))
+      {
+        sendToBrailleGroup(group, "*", "@"); // send the group to the Arduino
+        lastSentGroup = group; // update the last sent group
+      }
+    }
+    lineLeftEnd += groupWidth; // update the group X position for the next group
   }
 }
