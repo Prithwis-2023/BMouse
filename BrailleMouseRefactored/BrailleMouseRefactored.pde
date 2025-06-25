@@ -336,9 +336,10 @@ void draw()
   float lineHeight = textAscent() + textDescent() + boxHeightVal;     // calculate the line height
   float totalTextHeight = lines.length * (lineHeight + extraSpacing); // calculate the total text height
   float textYStart = height / 2 - totalTextHeight / 2;                // set the text to the center of the screen 
-  
-  int currentLineIndex = -1; // initialize the current line index
+  int currentLineIndex = -1;                                          // initialize the current line index
 
+  // POINTER: Create and handle pointer mode using radio buttons
+  String pointerMode = gui.radio("Pointer/Mode", new String[] {"Square", "Circle"});
 
   if (defaultDisplayMode == textDisplayMode.buttonMode)
   {
@@ -354,8 +355,30 @@ void draw()
       charGroupingFrequency = gui.sliderInt("Braille Settings/Character Grouping Frequency", defaultCharGrouping_FREQ, 1, 8); // set the character grouping frequency
       charGroupingFeature(currentLine, charGroupingFrequency, margin, lineY, lineHeight, boxHeightVal); // call the charGroupingFeature function
     }
-    //drawText(lines[textIndex], margin, textYStart); // draw the text
+    else if (defaultFeature == Feature.slidingWindow)
+    {
+      slidingWindowFrequency = gui.sliderInt("Braille Settings/Sliding Window Frequenxcy", defaultSlidingWindow_FREQ, 1, 8); // set the sliding window frequency
+      slidingWindowFeature(currentLine, slidingWindowFrequency, margin, lineY, lineHeight, boxHeightVal); // call the slidingWindowFeature function
+    }
+    else if (defaultFeature == Feature.wordGrouping)
+    {
+      wordGroupingFeature(currentLine, margin, lineY, lineHeight, boxHeightVal); // call the wordGroupingFeature function
+    }
+
+    int activeLineIndex = textIndex; // set the active line index to the text index
+    float pointerX = constrain(mouseX, margin, margin + textWidth(currentLine)); // constrain the pointer X position
+    float pointerY = textYStart + lineHeight / 3; // calculate the pointer Y position (centered vertically in the line)
+    float paragraphTopY = textYStart; // set the paragraph top Y position
+    float paragraphBottomY = textYStart + lineHeight + extraSpacing; // set the paragraph bottom Y position
+
+    pointer(pointerMode, pointerX, pointerY); // call the pointer function to draw the pointer
+
+    // no need for change of line beep in button mode, as the text is displayed in a single line
+    
+    float thresholdX = 8; // threshold for the ends of line beep in pixels
+    playBoundaryBeeps(pointerX, mouseY, margin, margin + textWidth(currentLine), paragraphTopY, paragraphBottomY, thresholdX, EOLBeep, TopandBottomBeep); // play the end of line beep
   }
+
   else if (defaultDisplayMode == textDisplayMode.normalMode)
   {
     // iterating through the lines of text
@@ -392,43 +415,25 @@ void draw()
         wordGroupingFeature(currentLine, margin, lineY, lineHeight, boxHeightVal); // call the wordGroupingFeature function
       }
     }
-  }
 
-  // POINTER: Create and handle pointer mode using radio buttons
-  String pointerMode = gui.radio("Pointer/Mode", new String[] {"Square", "Circle"});
-
-  // draw the pointer based on the selection mode
-  int activeLineIndex = (int) constrain((mouseY - textYStart) / (lineHeight + extraSpacing), 0, lines.length - 1); // calculate the active line index
-  float pointerX = constrain(mouseX, margin, margin + textWidth(lines[activeLineIndex])); // constrain the pointer X position 
-  float pointerY = textYStart + activeLineIndex * (lineHeight + extraSpacing) + lineHeight / 3; // calculate the pointer Y position
-  float paragraphTopY = textYStart; // set the paragraph top Y position
-  float paragraphBottomY = textYStart + (lines.length) * (lineHeight + extraSpacing); // set the paragraph bottom Y position
-  
-  if (pointerMode.equals("Square"))
-  {
-    noStroke();
-    fill(255, 0, 0); // set the pointer color to red
-    rect(pointerX, pointerY, 20, 20); // draw the square pointer
+    int activeLineIndex = (int) constrain((mouseY - textYStart) / (lineHeight + extraSpacing), 0, lines.length - 1); // calculate the active line index
+    float pointerX = constrain(mouseX, margin, margin + textWidth(lines[activeLineIndex])); // constrain the pointer X position 
+    float pointerY = textYStart + activeLineIndex * (lineHeight + extraSpacing) + lineHeight / 3; // calculate the pointer Y position
+    float paragraphTopY = textYStart; // set the paragraph top Y position
+    float paragraphBottomY = textYStart + (lines.length) * (lineHeight + extraSpacing); // set the paragraph bottom Y position
+    
+    pointer(pointerMode, pointerX, pointerY); // call the pointer function to draw the pointer)
+    
+    // Handle the change of line and end of line beeps
+    if (currentLineIndex != -1 && currentLineIndex != previousLineIndex)
+    {
+      COLBeep.stop();  // stop any current playback
+      COLBeep.play(); // play the sound
+      previousLineIndex = currentLineIndex; // update the previous line index
+    }
+    float thresholdX = 8; // threshold for the ends of line beep in pixels
+    playBoundaryBeeps(pointerX, mouseY, margin, margin + textWidth(lines[activeLineIndex]), paragraphTopY, paragraphBottomY, thresholdX, EOLBeep, TopandBottomBeep); // play the end of line beep
   }
-  else if (pointerMode.equals("Circle"))
-  {
-    noStroke();
-    fill(0, 0, 255); // set the pointer color to red
-    ellipse(pointerX, pointerY, 20, 20); // draw the circle pointer
-  }
-
-  // Handle the change of line beep
-  if (currentLineIndex != -1 && currentLineIndex != previousLineIndex)
-  {
-    COLBeep.stop();  // stop any current playback
-    COLBeep.play(); // play the sound
-
-    previousLineIndex = currentLineIndex; // update the previous line index
-  }
-  
-  // Handle the end of line beep
-  float thresholdX = 8; // threshold for the ends of line beep in pixels
-  playBoundaryBeeps(pointerX, mouseY, margin, margin + textWidth(lines[activeLineIndex]), paragraphTopY, paragraphBottomY, thresholdX, EOLBeep, TopandBottomBeep); // play the end of line beep
 }
 
 
@@ -663,5 +668,21 @@ void wordGroupingFeature(String line, float margin, float lineTopEnd, float line
       }
     }
     lineLeftEnd += wordWidth + textWidth(' '); // update the line left end position for the next word
+  }
+}
+
+void pointer(String mode, float pointerX, float pointerY)
+{
+  if (mode.equals("Square"))
+  {
+    noStroke();
+    fill(255, 0, 0); // set the pointer color to red
+    rect(pointerX, pointerY, 20, 20); // draw the square pointer
+  }
+  else if (mode.equals("Circle"))
+  {
+    noStroke();
+    fill(0, 0, 255); // set the pointer color to blue
+    ellipse(pointerX, pointerY, 20, 20); // draw the circle pointer
   }
 }
