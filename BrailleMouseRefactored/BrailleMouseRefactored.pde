@@ -383,172 +383,13 @@ void draw()
       else if (defaultFeature == Feature.slidingWindow)
       { 
         slidingWindowFrequency = gui.sliderInt("Braille Settings/Sliding Window Frequency", defaultSlidingWindow_FREQ, 1, 8); // set the sliding window frequency
-
         slidingWindowFeature(currentLine, slidingWindowFrequency, margin, lineY, lineHeight, boxHeightVal); // call the slidingWindowFeature function
-      
-        // /*First Pass" Draw the text */
-        // drawText(currentLine, lineXStart, lineY + boxHeightVal / 2); // draw the text
-        
-        // int slidingWindowSize = slidingWindowFrequency; // set the sliding window size
-        // int leftRightChars;  // number of characters to the left and right of the current character
-        // if (slidingWindowSize % 2 != 0)
-        // {
-        //   leftRightChars = (slidingWindowSize - 1) / 2;
-        // }
-        // else
-        // {
-        //   leftRightChars = slidingWindowSize / 2;
-        // }
-        
-        // for (int j = 0; j < currentLine.length(); j++) 
-        // {
-        //   int boundingBoxEndIndex = Math.min(j + 1, currentLine.length());
-        //   String charGroupBoundingBox = currentLine.substring(j, boundingBoxEndIndex);
-            
-        //   float groupWidthBoundingBox = 0;
-            
-        //   for (int k = j; k < boundingBoxEndIndex; k++)
-        //   {
-        //     groupWidthBoundingBox += textWidth(currentLine.charAt(k));
-        //   }
-            
-        //   // Prevent text overflow
-        //   if (lineXStart + groupWidthBoundingBox > width - margin) 
-        //   {
-        //     println("Text overflow prevented!");
-        //     lineXStart = textXStart; // reset the line X position
-        //   }
-
-        //   drawGroupBox(lineXStart, lineY, groupWidthBoundingBox, lineHeight);
-
-        //   char[] groupArray = new char[slidingWindowSize];
-            
-        //   for (int arrIndex = 0; arrIndex < slidingWindowSize; arrIndex++)
-        //   {
-        //     groupArray[arrIndex] = ' ';
-        //   }
-            
-        //   int startIndex, endIndex; 
-        //   String charGroup; // temporary group to hold the characters
-        //   String group;     // final group to be sent to Serial
-        //   int spaces = 0;   // used as padding for the group
-        //   // Edge case: if the mouse doesn't have enough characters to the left
-        //   if (j - leftRightChars < 0) 
-        //   {
-        //     if (slidingWindowSize % 2 != 0)
-        //     {
-        //       spaces = leftRightChars - j; // Determine how many spaces to pad on the left
-        //       startIndex = 0;
-        //       endIndex = Math.min(currentLine.length(), j + leftRightChars + 1); // Use as many characters as possible from the beginning, but do not exceed the string length
-        //       charGroup = currentLine.substring(startIndex, endIndex);
-        //       // Fill the padded array: leave left "spaces" as blank and then add the substring
-        //       for (int pos = 0; pos < charGroup.length(); pos++) 
-        //       {
-        //         groupArray[spaces + pos] = charGroup.charAt(pos);
-        //       }
-        //     }
-        //     else  
-        //     {
-        //       spaces = leftRightChars - j - 1;
-        //       startIndex = 0;
-        //       endIndex = Math.min(currentLine.length(), j + leftRightChars + 1);
-        //       charGroup = currentLine.substring(startIndex, endIndex);
-                
-        //       for (int pos = 0; pos < charGroup.length(); pos++)
-        //       {
-        //         groupArray[spaces + pos] = charGroup.charAt(pos);
-        //       }
-        //     }
-        //   } 
-        //   else 
-        //   {
-        //     // Normal case: there are enough characters on the left.
-        //     if (slidingWindowSize % 2 != 0)
-        //     {
-        //       startIndex = j - leftRightChars;
-        //       endIndex = Math.min(currentLine.length(), j + leftRightChars + 1);
-        //       charGroup = currentLine.substring(startIndex, endIndex);
-        //       for (int pos = 0; pos < charGroup.length(); pos++) 
-        //       {
-        //         groupArray[pos] = charGroup.charAt(pos);
-        //       }
-        //     }
-        //     else
-        //     {
-        //       startIndex = j - (leftRightChars - 1);
-        //       endIndex = Math.min(currentLine.length(), j + leftRightChars + 1);
-        //       charGroup = currentLine.substring(startIndex, endIndex);
-        //       for (int pos = 0; pos < charGroup.length(); pos++)
-        //       {
-        //         groupArray[pos] = charGroup.charAt(pos);
-        //       }
-        //     }
-        //   }
-            
-        //   group = String.valueOf(groupArray);
-            
-        //   // Adjust the drawing x-coordinate if the edge case is active.
-        //   float padWidth = spaces * textWidth(' ');
-        //   float charX = textXStart + textWidth(currentLine.substring(0, j)) - padWidth;
-            
-        //   // Prevent text overflow
-        //   if (charX + textWidth(charGroup) > width) 
-        //   {
-        //     charX = textXStart;
-        //   }
-        
-        //   // Render characters, avoiding duplicates
-        //   for (int charIndex = 0; charIndex < charGroup.length(); charIndex++) 
-        //   {
-        //     float charWidth = textWidth(charGroup.charAt(charIndex));
-              
-        //     // Check if the pointer is inside the current group's bounding box
-        //     if (mouseX >= lineXStart && mouseX <= lineXStart + charWidth - 0.5 && mouseY >= lineY && mouseY <= lineY + lineHeight) 
-        //     {
-        //       if (!group.equals(lastSentGroup)) 
-        //       { 
-        //         // Send only if this is a new group
-        //         sendToBrailleGroup(group, "#", "+");
-        //         lastSentGroup = group; // Updating the last sent group
-        //       }
-        //     }
-        //     charX += charWidth;
-        //   }
-        //   lineXStart += groupWidthBoundingBox;
-        // }
       }
 
       /* WHEN THE WORD GROUPING FEATURE IS ACTIVE */
       else if (defaultFeature == Feature.wordGrouping)
       {
-        /* FIRST PASS: Draw the text */
-        drawText(currentLine, lineXStart, lineY + boxHeightVal / 2);
-        
-        /* SECOND PASS: create the groups and draw the box around the text */
-        String[] words = currentLine.split(" "); // split the line into words
-        for (String word: words)
-        {
-          float wordWidth = textWidth(word); // measure the width of the word
-
-          if (lineXStart + wordWidth > width - margin)
-          {
-            println("Text Overflow Prevented!");
-            lineXStart = margin; // reset the line X position
-          }
-          drawGroupBox(lineXStart, lineY, wordWidth, lineHeight); // draw the bounding box
-          
-          // Handle pointer interaction
-          if (mouseX >= lineXStart && mouseX <= lineXStart + wordWidth && mouseY >= lineY && mouseY <= lineY + lineHeight)
-          {
-            if (!word.equals(lastSentGroup))
-            {
-              // send only if this is a new group
-              sendToBrailleGroup(word, "^", "|");
-              lastSentGroup = word; // update the last sent group
-            }
-          }
-          lineXStart += wordWidth + textWidth(' '); // update the line X position for the next word
-        }
+        wordGroupingFeature(currentLine, margin, lineY, lineHeight, boxHeightVal); // call the wordGroupingFeature function
       }
     }
   }
@@ -777,7 +618,7 @@ void slidingWindowFeature(String line, int frequency, float margin, float lineTo
     {
       float charWidth = textWidth(tempGroup.charAt(charIndex)); //measure the width of the character
 
-      if (mouseX >= lineLeftEnd && mouseX <= lineLeftEnd + charWidth && mouseY >= lineTopEnd && mouseY <= lineTopEnd + lineHeight)
+      if (mouseX >= lineLeftEnd && mouseX <= lineLeftEnd + charWidth / 2 && mouseY >= lineTopEnd && mouseY <= lineTopEnd + lineHeight)
       {
         if (!group.equals(lastSentGroup)) // send only if this is a new group
         {
@@ -787,5 +628,40 @@ void slidingWindowFeature(String line, int frequency, float margin, float lineTo
       }
     }
     lineLeftEnd += groupWidthforBox; // update the line left end position for the next group
+  }
+}
+
+void wordGroupingFeature(String line, float margin, float lineTopEnd, float lineHeight, float boxHeight)
+{
+  float lineLeftEnd = margin; // set the line left end position
+  
+  // First Pass: draw the text
+  drawText(line, lineLeftEnd, lineTopEnd + boxHeight / 2); // draw the text by centering it vertically in the box
+
+  // Second Pass: create the groups and draw the box around the text
+  String[] words = line.split(" "); // split the line into words
+  for (String word : words)
+  {
+    float wordWidth = textWidth(word); // measure the width of the word
+    
+    // Prevent text Overflow
+    if (lineLeftEnd + wordWidth > width - margin)
+    {
+      println("text Overfflow Prevented!");
+      lineLeftEnd = margin; // reset the line X position
+    }
+
+    drawGroupBox(lineLeftEnd, lineTopEnd, wordWidth, lineHeight); // draw the bounding box
+
+    // Third pass: sending the group to the Arduino and handling pointer interaction
+    if (mouseX >= lineLeftEnd && mouseX <= lineLeftEnd + wordWidth && mouseY >= lineTopEnd && mouseY <= lineTopEnd + lineHeight)
+    {
+      if (!word.equals(lastSentGroup))
+      {
+        sendToBrailleGroup(word, "^", "|"); // send the group to the Arduino
+        lastSentGroup = word; // update the last sent group
+      }
+    }
+    lineLeftEnd += wordWidth + textWidth(' '); // update the line left end position for the next word
   }
 }
