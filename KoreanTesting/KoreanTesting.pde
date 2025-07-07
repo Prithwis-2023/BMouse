@@ -21,9 +21,15 @@ final char[] JONGSEONG =
     'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'
 };
 
+PFont koreanFont;
+
 void setup()
 {
-
+  size(500, 500);
+  // Create a font that supports Korean. You must have this font installed on your system.
+  koreanFont = createFont("Noto Sans CJK KR", 32); // Try "NanumGothic" or another if this doesn't work
+  textFont(koreanFont);
+  textSize(32);
 }
 
 void draw()
