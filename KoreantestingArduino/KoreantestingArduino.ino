@@ -1,6 +1,5 @@
 #include <BrailleDisplay.h>
 
-
 #define CELL_COUNT 8
 #define ON_PIN 6
 #define DIN_PIN 3
