@@ -23,48 +23,48 @@ final char[] JONGSEONG =
     'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'
 };
 
-String[][] korBrailleDB = 
+String[][] korBrailleDB =   // for choeseong and jongseong
 {
-    {hex('\0'), "FF", "FF"},
-    {hex('ㄱ'), "FE", "F7"},
-    {hex('ㄴ'), "F6", "ED"},
-    {hex('ㄷ'), "EE", "DD"},
-    {hex('ㄹ'), "FD", "EF"},
-    {hex('ㅁ'), "F5", "EB"},
-    {hex('ㅂ'), "FC", "E7"},
-    {hex('ㅅ'), "BF", "7F"},
-    {hex('ㅇ'), "FF", "C9"},
-    {hex('ㅈ'), "FA", "D7"},
-    {hex('ㅊ'), "F9", "CF"},
-    {hex('ㅋ'), "E6", "CD"},
-    {hex('ㅌ'), "E5", "CB"},
-    {hex('ㅍ'), "F4", "E9"},
-    {hex('ㅎ'), "EC", "D9"}
+    {hex('\0'), "-", "-"},
+    {hex('ㄱ'), "2808", "2801"},
+    {hex('ㄴ'), "2809", "2812"},
+    {hex('ㄷ'), "280A", "2814"},
+    {hex('ㄹ'), "2810", "2802"},
+    {hex('ㅁ'), "2811", "2822"},
+    {hex('ㅂ'), "2818", "2803"},
+    {hex('ㅅ'), "2880", "2840"},
+    {hex('ㅇ'), "2800", "2836"},
+    {hex('ㅈ'), "2828", "2805"},
+    {hex('ㅊ'), "2830", "2806"},
+    {hex('ㅋ'), "280B", "2816"},
+    {hex('ㅌ'), "2813", "2826"},
+    {hex('ㅍ'), "2819", "2832"},
+    {hex('ㅎ'), "281A", "2834"}
 };
 
-String [][] korBrailleDB2 = 
+String [][] korBrailleDB2 =  // for jungseong
 {
-    {hex('ㅏ'), "E3", "-"},
-    {hex('ㅐ'), "C5", "-"},
-    {hex('ㅑ'), "DC", "-"},
-    {hex('ㅒ'), "DC", "C5"},
-    {hex('ㅓ'), "CE", "-"},
-    {hex('ㅔ'), "D4", "-"},
-    {hex('ㅕ'), "F1", "-"},
-    {hex('ㅖ'), "DE", "-"},
-    {hex('ㅗ'), "D3", "-"},
-    {hex('ㅘ'), "C3", "-"},
-    {hex('ㅙ'), "C3", "C5"},
-    {hex('ㅚ'), "D0", "-"},
-    {hex('ㅛ'), "DA", "-"},
-    {hex('ㅜ'), "D6", "-"},
-    {hex('ㅝ'), "C6", "-"},
-    {hex('ㅞ'), "C6", "C5"},
-    {hex('ㅟ'), "D6", "C5"},
-    {hex('ㅠ'), "F2", "-"},
-    {hex('ㅡ'), "EA", "-"},
-    {hex('ㅢ'), "E8", "-"},
-    {hex('ㅣ'), "D5", "-"}
+    {hex('ㅏ'), "2823", "-"},
+    {hex('ㅐ'), "2817", "-"},
+    {hex('ㅑ'), "281C", "-"},
+    {hex('ㅒ'), "281C", "2817"},
+    {hex('ㅓ'), "280E", "-"},
+    {hex('ㅔ'), "281D", "-"},
+    {hex('ㅕ'), "2831", "-"},
+    {hex('ㅖ'), "280C", "-"},
+    {hex('ㅗ'), "2825", "-"},
+    {hex('ㅘ'), "2827", "-"},
+    {hex('ㅙ'), "2827", "2817"},
+    {hex('ㅚ'), "283D", "-"},
+    {hex('ㅛ'), "282C", "-"},
+    {hex('ㅜ'), "280D", "-"},
+    {hex('ㅝ'), "280F", "-"},
+    {hex('ㅞ'), "280F", "2817"},
+    {hex('ㅟ'), "280D", "2817"},
+    {hex('ㅠ'), "2829", "-"},
+    {hex('ㅡ'), "282A", "-"},
+    {hex('ㅢ'), "283A", "-"},
+    {hex('ㅣ'), "2815", "-"}
 };
 
 PFont koreanFont;
@@ -92,8 +92,9 @@ void sendToArduino(String[] hanguelBlock)
         String Str = hanguelBlock[i];
         if (Str.equals(" "))
         {
-            myPort.write((byte) 0xFF); 
-            print("FF ");
+            myPort.write((byte) 0x28); // high byte of 0x2800
+            myPort.write((byte) 0x00); // low byte of 0x2800 
+            print("2800 ");
         }
         else if (Str.equals("-"))
         {
@@ -102,8 +103,11 @@ void sendToArduino(String[] hanguelBlock)
         else
         {
             int val = unhex(Str);
-            myPort.write((byte) val);
-            print(hex(val, 2) + " "); // print in 2 digits hex format
+            byte highByte = (byte) (val >> 8); // Get the high byte
+            byte lowByte = (byte) (val & 0xFF); // Get the low byte
+            myPort.write(highByte); // Send high byte
+            myPort.write(lowByte); // Send low byte
+            print(hex(val, 4) + " "); // print in 4 digits hex format
         }
     }
     println();
@@ -151,7 +155,7 @@ String[] korBlockToBraille(char ch)
     }
     else
     {
-        return new String[]{str(ch), str(ch), str(ch), str(ch)}; // Return the character as is if not a Hanguel syllable
+        return new String[]{str(ch), "-", "-", "-"}; // Return the character as is if not a Hanguel syllable, even for spaces between hanguel words
     }
 }
 
