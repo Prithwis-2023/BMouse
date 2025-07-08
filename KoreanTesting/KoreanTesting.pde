@@ -1,5 +1,7 @@
 import processing.serial.*;
 
+Serial myPort;
+
 String s = "안녕하세요 반갑습니다 각";
 
 final char[] CHOESEONG = 
@@ -76,81 +78,98 @@ void setup()
     //fill(255);
     //background(0);
     //textSize(32);
+    myPort = new Serial(this, Serial.list()[0], 9600);
 
-    String[][] result = KoreanToBraille(s);
-
-    for (int i = 0; i < result.length; i++) 
-    {
-        println(result[i][0], result[i][1], result[i][2], result[i][3]);
-    }
-
-
-
+    KoreanToBraille(s);
 }
 
-void draw()
+void sendToArduino(String[] hanguelBlock)
 {
+    print("Sending: ");
 
+    for (int i = 0; i < hanguelBlock.length; i++)
+    {
+        String Str = hanguelBlock[i];
+        if (Str.equals(" "))
+        {
+            myPort.write((byte) 0xFF); 
+            print("FF ");
+        }
+        else if (Str.equals("-"))
+        {
+            continue; // Skip the dash, as it is not sent to Arduino
+        }
+        else
+        {
+            int val = unhex(Str);
+            myPort.write((byte) val);
+            print(hex(val, 2) + " "); // print in 2 digits hex format
+        }
+    }
+    println();
+}
+void draw(){}
+
+String[] korBlockToBraille(char ch)
+{
+    if (ch>= 0xAC00 && ch <= 0xD7A3) /// check if the character is a Hanguel syllable 
+    {
+        int syllableIndex = ch - 0xAC00;
+        int choeseongIndex = syllableIndex / (21 * 28);
+        int jungseongIndex = (syllableIndex % (21 * 28)) / 28;
+        int jongseongIndex = syllableIndex % 28;
+
+        char choeseong = CHOESEONG[choeseongIndex];
+        char jungseong = JUNGSEONG[jungseongIndex];
+        char jongseong = JONGSEONG[jongseongIndex];
+
+        String[] braille = new String[4];
+        
+        for (int j = 0; j < korBrailleDB.length; j++)
+        {
+            if (korBrailleDB[j][0].equals(hex(choeseong)))
+            {
+                braille[0] = korBrailleDB[j][1]; // Braille for initial consonant
+            }
+
+            if (korBrailleDB[j][0].equals(hex(jongseong)))
+            {
+                braille[3] = korBrailleDB[j][2]; // Braille for final consonant
+            }
+        }
+
+        for (int j = 0; j < korBrailleDB2.length; j++)
+        {
+            if (korBrailleDB2[j][0].equals(hex(jungseong)))
+            {
+                braille[1] = korBrailleDB2[j][1]; // Braille for medial vowel
+                braille[2] = korBrailleDB2[j][2]; // Second part of medial vowel or "-"
+            }
+        }
+
+        return braille;
+    }
+    else
+    {
+        return new String[]{str(ch), str(ch), str(ch), str(ch)}; // Return the character as is if not a Hanguel syllable
+    }
 }
 
-
-String[][] KoreanToBraille(String s)
+void KoreanToBraille(String s)
 {
     String[][] korArray = new String[s.length()][4]; // first column for initial, second and third for medial and final consonants. A '-' appears when the medial doesn't have a second braille unicode
 
     for (int i = 0; i < s.length(); i++)
     {
         char ch = s.charAt(i);
-        if (ch >= 0xAC00 && ch <= 0xD7A3)
-        {
-            int syllableIndex = ch - 0xAC00;
-            int choeseongIndex = syllableIndex / (21 * 28);
-            int jungseongIndex = (syllableIndex % (21 * 28)) / 28;
-            int jongseongIndex = syllableIndex % 28;
+        String[] braille = korBlockToBraille(ch);
+        
+        korArray[i][0] = braille[0]; // Initial consonant
+        korArray[i][1] = braille[1]; // Medial vowel
+        korArray[i][2] = braille[2]; // Second part of medial vowel or "-"
+        korArray[i][3] = braille[3]; // Final consonant
 
-            char choeseong = CHOESEONG[choeseongIndex];
-            char jungseong = JUNGSEONG[jungseongIndex];
-            char jongseong = JONGSEONG[jongseongIndex];
-
-            for (int j = 0; j < korBrailleDB2.length; j++)
-            {
-                if (korBrailleDB2[j][0].equals(hex(jungseong)))
-                {
-                    korArray[i][1] = korBrailleDB2[j][1]; 
-                    
-                    if (korBrailleDB2[j][2].equals("-"))
-                    {
-                        korArray[i][2] = "-"; // No final consonant
-                    }
-                    else
-                    {
-                        korArray[i][2] = korBrailleDB2[j][2]; // Braille for medial vowel
-                    }
-                }
-            }
-            
-            for (int j = 0; j < korBrailleDB.length; j++)
-            {
-                if (korBrailleDB[j][0].equals(hex(choeseong)))
-                {
-                    korArray[i][0] = korBrailleDB[j][1]; // Braille for initial consonant
-                }
-
-                if (korBrailleDB[j][0].equals(hex(jongseong)))
-                {
-                    korArray[i][3] = korBrailleDB[j][2]; // Braille for final consonant
-                }
-            }
-        }
-        else
-        {
-            // Handle other characters if necessary (also including spaces)
-            korArray[i][0] = str(ch); // Just store the character as is
-            korArray[i][1] = str(ch); // For 
-            korArray[i][2] = str(ch); // all
-            korArray[i][3] = str(ch); // parts
-        }
-    }
-
-    return korArray;    
+        sendToArduino(korArray[i]); // Send each Hanguel block to Arduino
+        delay(200); // Delay to ensure Arduino can process the data
+    }   
 }
