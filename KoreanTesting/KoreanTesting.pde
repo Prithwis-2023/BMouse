@@ -176,4 +176,7 @@ void KoreanToBraille(String s)
         sendToArduino(korArray[i]); // Send each Hanguel block to Arduino
         delay(200); // Delay to ensure Arduino can process the data
     }   
-}
+    // sending termination signal. 0xFFFF is beyond the range of Braille unicode so safe to use
+    myPort.write((byte) 0xFF);
+    myPort.write((byte) 0xFF);
+}   
