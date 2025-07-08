@@ -142,8 +142,8 @@ String[] korBlockToBraille(char ch)
         {
             if (korBrailleDB2[j][0].equals(hex(jungseong)))
             {
-                braille[1] = korBrailleDB2[j][1]; // Braille for medial vowel
-                braille[2] = korBrailleDB2[j][2]; // Second part of medial vowel or "-"
+                braille[1] = korBrailleDB2[j][1]; // Braille for first part of medial vowel
+                braille[2] = korBrailleDB2[j][2]; // Second part of medial vowel or "-" (if nothing)
             }
         }
 
