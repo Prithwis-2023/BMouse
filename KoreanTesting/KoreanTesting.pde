@@ -23,7 +23,7 @@ final char[] JONGSEONG =
     'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'
 };
 
-String[][] korBrailleDB =   // for choeseong and jongseong
+/*String[][] korBrailleDB =   // first for choeseong and second for jongseong
 {
     {hex('\0'), "-", "-"},
     {hex('ㄱ'), "2808", "2801"},
@@ -42,7 +42,7 @@ String[][] korBrailleDB =   // for choeseong and jongseong
     {hex('ㅎ'), "281A", "2834"}
 };
 
-String [][] korBrailleDB2 =  // for jungseong
+String [][] korBrailleDB2 =  // for jungseong, some of them have two parts
 {
     {hex('ㅏ'), "2823", "-"},
     {hex('ㅐ'), "2817", "-"},
@@ -65,6 +65,49 @@ String [][] korBrailleDB2 =  // for jungseong
     {hex('ㅡ'), "282A", "-"},
     {hex('ㅢ'), "283A", "-"},
     {hex('ㅣ'), "2815", "-"}
+};*/
+String[][] korBrailleDB = 
+{
+    {hex('\0'), "-", "-"},
+    {hex('ㄱ'), "FE", "F7"},
+    {hex('ㄴ'), "F6", "ED"},
+    {hex('ㄷ'), "EE", "DD"},
+    {hex('ㄹ'), "FD", "EF"},
+    {hex('ㅁ'), "F5", "EB"},
+    {hex('ㅂ'), "FC", "E7"},
+    {hex('ㅅ'), "BF", "7F"},
+    {hex('ㅇ'), "FF", "C9"},
+    {hex('ㅈ'), "FA", "D7"},
+    {hex('ㅊ'), "F9", "CF"},
+    {hex('ㅋ'), "E6", "CD"},
+    {hex('ㅌ'), "E5", "CB"},
+    {hex('ㅍ'), "F4", "E9"},
+    {hex('ㅎ'), "EC", "D9"}
+};
+
+String [][] korBrailleDB2 = 
+{
+    {hex('ㅏ'), "E3", "-"},
+    {hex('ㅐ'), "C5", "-"},
+    {hex('ㅑ'), "DC", "-"},
+    {hex('ㅒ'), "DC", "C5"},
+    {hex('ㅓ'), "CE", "-"},
+    {hex('ㅔ'), "D4", "-"},
+    {hex('ㅕ'), "F1", "-"},
+    {hex('ㅖ'), "DE", "-"},
+    {hex('ㅗ'), "D3", "-"},
+    {hex('ㅘ'), "C3", "-"},
+    {hex('ㅙ'), "C3", "C5"},
+    {hex('ㅚ'), "D0", "-"},
+    {hex('ㅛ'), "DA", "-"},
+    {hex('ㅜ'), "D6", "-"},
+    {hex('ㅝ'), "C6", "-"},
+    {hex('ㅞ'), "C6", "C5"},
+    {hex('ㅟ'), "D6", "C5"},
+    {hex('ㅠ'), "F2", "-"},
+    {hex('ㅡ'), "EA", "-"},
+    {hex('ㅢ'), "E8", "-"},
+    {hex('ㅣ'), "D5", "-"}
 };
 
 PFont koreanFont;
@@ -92,9 +135,8 @@ void sendToArduino(String[] hanguelBlock)
         String Str = hanguelBlock[i];
         if (Str.equals(" "))
         {
-            myPort.write((byte) 0x28); // high byte of 0x2800
-            myPort.write((byte) 0x00); // low byte of 0x2800 
-            print("2800 ");
+            myPort.write((byte) 0xFF); 
+            print("FF ");
         }
         else if (Str.equals("-"))
         {
@@ -103,11 +145,8 @@ void sendToArduino(String[] hanguelBlock)
         else
         {
             int val = unhex(Str);
-            byte highByte = (byte) (val >> 8); // Get the high byte
-            byte lowByte = (byte) (val & 0xFF); // Get the low byte
-            myPort.write(highByte); // Send high byte
-            myPort.write(lowByte); // Send low byte
-            print(hex(val, 4) + " "); // print in 4 digits hex format
+            myPort.write((byte) val); // Send the byte to Arduino
+            print(hex(val, 2) + " "); // print in 4 digits hex format
         }
     }
     println();
@@ -174,10 +213,9 @@ void KoreanToBraille(String s)
         korArray[i][3] = braille[3]; // Final consonant
 
         sendToArduino(korArray[i]); // Send each Hanguel block to Arduino
-        delay(200); // Delay to ensure Arduino can process the data
+        delay(500); // Delay to ensure Arduino can process the data
     }   
-    // sending termination signal. 0xFFFF is beyond the range of Braille unicode so safe to use
-    myPort.write((byte) 0xFF);
-    myPort.write((byte) 0xFF);
-    println("Sending: FFFF");
+    // sending termination signal.
+    myPort.write((byte) 0xAA);
+    println("Sending: AA");
 }   

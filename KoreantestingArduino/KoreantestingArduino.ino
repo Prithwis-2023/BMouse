@@ -18,27 +18,21 @@ void setup()
   Serial.begin(9600);
   display.begin();
   display.clear();
+
+  display.binaryWriteCell(1, 0xE8);
 }
 
 void loop() 
 {
-  if (Serial.available())
-  {
-    uint8_t high = Serial.read();
-    uint8_t low = Serial.read();
-    uint16_t reconstructed = (high << 8) | low;
 
-    if (reconstructed == 0xFFFF) // checking for termination signal
-    {
-      display.writeCells(pattern, index, false);
-      index = 0; // reset index
-      return; // exit the loop
-    }
-    else
-    {
-      pattern[index++] = reconstructed;
-    }
+  // if (Serial.available())
+  // {
+  //   uint8_t byteVal = Serial.read();
 
+  //   if (byteVal == 0xAA) // checking for termination signal
+  //   {
 
-  }
+  //   }
+  // }
+  
 }
