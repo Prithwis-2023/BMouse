@@ -84,7 +84,7 @@ String convertBDotTo1ByteCode (String bDot) // this function converts a Braille 
 }
 
 
-// braille setting
+// braille settin
 final boolean slidingWindow = true; final boolean charGrouping = false; final boolean wordGrouping = false;
 final int slidingWindowGrouping = 8;  // 1, 3, 5, and 8
 int brailleFrequency;
