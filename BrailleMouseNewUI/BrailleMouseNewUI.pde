@@ -11,6 +11,79 @@ int prevLineIndex = -1;
 final int DB_FREQ = 5;
 final String DTEXT = "Welcome to a delightful afternoon of exploration and creativity!";  // "Enter your text here"
 
+/* for Korean Braille */
+final char[] CHOESEONG = 
+{
+    'ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ',
+    'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'
+};
+
+final char[] JUNGSEONG = 
+{
+    'ㅏ', 'ㅐ', 'ㅑ', 'ㅒ', 'ㅓ', 'ㅔ', 'ㅕ', 'ㅖ', 'ㅗ', 'ㅘ',
+    'ㅙ', 'ㅚ', 'ㅛ', 'ㅜ', 'ㅝ', 'ㅞ', 'ㅟ', 'ㅠ', 'ㅡ', 'ㅢ', 'ㅣ'
+};
+
+final char[] JONGSEONG = 
+{
+    '\0', 'ㄱ', 'ㄲ', 'ㄳ', 'ㄴ', 'ㄵ', 'ㄶ', 'ㄷ', 'ㄹ', 'ㄺ',
+    'ㄻ', 'ㄼ', 'ㄽ', 'ㄾ', 'ㄿ', 'ㅀ', 'ㅁ', 'ㅂ', 'ㅄ', 'ㅅ',
+    'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'
+};
+
+// for choeseong and jongseong
+String[][] korBrailleDB =  
+{
+    {hex('\0'), "-", "-"},
+    {hex('ㄱ'), "⠈", "⠁"},
+    {hex('ㄴ'), "⠉", "⠒"},
+    {hex('ㄷ'), "⠊", "⠔"},
+    {hex('ㄹ'), "⠐", "⠂"},
+    {hex('ㅁ'), "⠑", "⠢"},
+    {hex('ㅂ'), "⠘", "⠃"},
+    {hex('ㅅ'), "⠠", "⠄"},
+    {hex('ㅇ'), "\u2800", "⠶"},
+    {hex('ㅈ'), "⠨", "⠅"},
+    {hex('ㅊ'), "⠰", "⠆"},
+    {hex('ㅋ'), "⠋", "⠖"},
+    {hex('ㅌ'), "⠓", "⠦"},
+    {hex('ㅍ'), "⠙", "⠲"},
+    {hex('ㅎ'), "⠚", "⠴"}
+};
+
+// for jungseong
+String [][] korBrailleDB2 = 
+{
+    {hex('ㅏ'), "⠣", "-"},
+    {hex('ㅐ'), "⠗", "-"},
+    {hex('ㅑ'), "⠜", "-"},
+    {hex('ㅒ'), "⠜", "⠗"},
+    {hex('ㅓ'), "⠎", "-"},
+    {hex('ㅔ'), "⠝", "-"},
+    {hex('ㅕ'), "⠱", "-"},
+    {hex('ㅖ'), "⠌", "-"},
+    {hex('ㅗ'), "⠥", "-"},
+    {hex('ㅘ'), "⠧", "-"},
+    {hex('ㅙ'), "⠧", "⠗"},
+    {hex('ㅚ'), "⠽", "-"},
+    {hex('ㅛ'), "⠬", "-"},
+    {hex('ㅜ'), "⠍", "-"},
+    {hex('ㅝ'), "⠏", "-"},
+    {hex('ㅞ'), "⠏", "⠗"},
+    {hex('ㅟ'), "⠍", "⠗"},
+    {hex('ㅠ'), "⠩", "-"},
+    {hex('ㅡ'), "⠪", "-"},
+    {hex('ㅢ'), "⠺", "-"},
+    {hex('ㅣ'), "⠕", "-"}
+};
+
+String convertBDotTo1ByteCode (String bDot) // this function converts a Braille dot pattern to its corresponding one-byte code
+{
+  int index = unhex(hex(bDot.charAt(0))) - 0x2800; // Convert dot string to integer and subtract 0x2800 to get the index
+  return hex(index);                               // Convert the index to a hex string
+}
+
+
 // braille setting
 final boolean slidingWindow = true; final boolean charGrouping = false; final boolean wordGrouping = false;
 final int slidingWindowGrouping = 8;  // 1, 3, 5, and 8

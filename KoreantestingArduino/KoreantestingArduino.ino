@@ -25,16 +25,18 @@ void binaryWriteCell(uint8_t position, byte byteVal)
     bitWrite(sortedByte, 1, bitRead(byteVal, 4));
     bitWrite(sortedByte, 0, bitRead(byteVal, 3));
 
-    bitWrite(againSortedByte, 3, bitRead(sortedByte, 0));
-    bitWrite(againSortedByte, 4, bitRead(sortedByte, 1));
-    bitWrite(againSortedByte, 5, bitRead(sortedByte, 2));
-    bitWrite(againSortedByte, 0, bitRead(sortedByte, 3));
-    bitWrite(againSortedByte, 1, bitRead(sortedByte, 4));
-    bitWrite(againSortedByte, 2, bitRead(sortedByte, 5));
-    bitWrite(againSortedByte, 6, bitRead(sortedByte, 7));
-    bitWrite(againSortedByte, 7, bitRead(sortedByte, 6));
+    sortedByte = ~sortedByte;
+    // bitWrite(againSortedByte, 7, bitRead(sortedByte, 6));
+    // bitWrite(againSortedByte, 6, bitRead(sortedByte, 7));
+    // bitWrite(againSortedByte, 5, bitRead(sortedByte, 2));
+    // bitWrite(againSortedByte, 4, bitRead(sortedByte, 1));
+    // bitWrite(againSortedByte, 3, bitRead(sortedByte, 0));
+    // bitWrite(againSortedByte, 2, bitRead(sortedByte, 5));
+    // bitWrite(againSortedByte, 1, bitRead(sortedByte, 4));
+    // bitWrite(againSortedByte, 0, bitRead(sortedByte, 3));
+    
 
-    cells[CELL_COUNT - position - 1] = againSortedByte;
+    cells[CELL_COUNT - position - 1] = sortedByte;
 
     digitalWrite(LATCH_PIN, LOW);
     for (int i = CELL_COUNT - 1; i >= 0; i--)
@@ -46,25 +48,18 @@ void binaryWriteCell(uint8_t position, byte byteVal)
 
 void setup() 
 {
-  //display.begin();
-  //display.clear();
-  //binaryWriteCell(1, 0xC5);
+  display.begin();
+  display.clear();
+  //binaryWriteCell(1, 0x23);
 }
 
 void loop() 
 {
-  if (Serial.available()) 
+  if (Serial.available())
   {
-    byte b = Serial.read();
+    uint8_t byteVal = Serial.read();
+
+    binaryWriteCell(1, byteVal);
   }
-  // if (Serial.available())
-  // {
-  //   uint8_t byteVal = Serial.read();
-
-  //   if (byteVal == 0xAA) // checking for termination signal
-  //   {
-
-  //   }
-  // }
   
 }
