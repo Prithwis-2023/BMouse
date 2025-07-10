@@ -4,8 +4,10 @@ import processing.serial.*;
 import processing.sound.*;
 
 // create enums for the text display modes and the features
+enum Language {English, Korean}; 
 enum Feature {charGrouping, wordGrouping, slidingWindow}; 
 enum textDisplayMode {buttonMode, normalMode}; // create an enum for the text display modes
+Language defaultLanguage = Language.English; // default language
 Feature defaultFeature = Feature.charGrouping; // default feature
 textDisplayMode defaultDisplayMode = textDisplayMode.normalMode; // default text display mode
 
@@ -149,49 +151,7 @@ String[] wrapText(String text, float maxWidth)
 
   return wrappedLines.toArray(new String[0]);
 }
-//   String[] words = splitTokens(text, " ");
-//   ArrayList<String> lines = new ArrayList<String>();
-//   String currentLine = "";
-  
-//   //printArrayList(words); // Debugging output to see the words array
 
-//   // Fill a line with words until it exceeds the max width
-//   for (String word : words)
-//   {
-
-//     if (word.contains(" "))
-//     {
-//       continue; // skip empty words
-//     }
-
-//     if (word.charAt(0) == '\n')
-//     {
-//       println("New line detected, adding current line to lines.");
-//       lines.add(currentLine);
-//       currentLine = "";
-
-//     } else {
-//       if (textWidth(currentLine + word) > maxWidth)
-//       {
-//         lines.add(currentLine);
-//         currentLine = "";
-//       }
-
-      
-//       currentLine += word + " ";
-//     }
-
-    
-//   }
-  
-//   // Add the last line if it has content 
-//   if (currentLine.length() > 0)
-//   {
-//       lines.add(currentLine);
-//   }
-  
-//   return lines.toArray(new String[0]);
-// }
 
 // Function to draw the text on the screen
 void drawText(String presentLine, float PosX, float PosY)
@@ -269,6 +229,34 @@ void draw()
   // Background color adjustment
   background(gui.colorPicker("Background/Color").hex);
   
+  // GUI for Language Selection
+  String lang = gui.radio(
+    "Language",
+    new String[] {"English", "Korean"},
+    "English"
+  );
+  if (lang.equals("English"))
+  {
+    defaultLanguage = Language.English;
+    DTEXT = "This is it. \n The fight of our lives and we're going to win. Bla Bla Black Sheep have you any wool.\n Whatever it takes. \n And Hello World!";
+    font = createFont("MapleMono-SemiBold.otf", 32); // setting the default English font
+    textFont(font);
+  }
+  else if (lang.equals("Korean"))
+  {
+    defaultLanguage = Language.Korean;
+    DTEXT = "안녕하세요 반갑습니다 각"; 
+    font = createFont("Noto Sans CJK KR", 32); // setting the default Korean font
+    textFont(font);
+  }
+  else
+  {
+    defaultLanguage = Language.English;
+    DTEXT = "This is it. \n The fight of our lives and we're going to win. Bla Bla Black Sheep have you any wool.\n Whatever it takes. \n And Hello World!";
+    font = createFont("MapleMono-SemiBold.otf", 32);
+    textFont(font);
+  }
+
   // GUI for the Display Mode
   String displayMode = gui.radio(
     "Text Display/Mode",
