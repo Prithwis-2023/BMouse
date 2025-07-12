@@ -24,6 +24,9 @@ final int defaultSlidingWindow_FREQ = 8;  // sliding window frequency for slidin
 
 int textIndex = 0; // index for the lines of the sample text
 String DTEXT = "This is it. \n The fight of our lives and we're going to win. Bla Bla Black Sheep have you any wool.\n Whatever it takes. \n And Hello World!";  // custom text
+String korDTEXT = "안녕하세요 반갑습니다 각"; // custom Korean text
+String markersString = ""; // markers for the Korean text
+
 String[] lines;
 
 // Sound
@@ -90,27 +93,28 @@ void setup()
 }
 
 // function to send the group to the Arduino
-void sendToBrailleGroup(String group, String startMarker, String endMarker)
+void sendToBrailleGroup(String group, String startMarker, String endMarker, String markerString, int startIndex, int endIndex)
 {
   if (myPort != null)
   {
-    String groupSent = startMarker + group + endMarker;
-    myPort.write(groupSent);
-    println("Sent to Arduino: " + groupSent); // Debugging output
+    if (defaultLanguage == Language.English)
+    {
+      String groupSent = 'E' + startMarker + group + endMarker;
+      myPort.write(groupSent);
+      println("Sent to Arduino: " + groupSent); // Debugging output
+    }
+    else if (defaultLanguage == Language.Korean)
+    {
+      String brailleString = 'K' + startMarker + bUnicodesString(group, markerString, startIndex, endIndex) + endMarker;
+      myPort.write(brailleString); // send the braille string to the Arduino
+      println("Sent to Arduino: " + brailleString); // Debugging output
+    }
   }
   else
   {
     println("Serial port not initialized.");
   }
   delay(1);
-}
-
-void printArrayList(String[] list)
-{
-  for (String item : list)
-  {
-    println("DBG> " + item);
-  }
 }
 
 // Function to auto generate multiple lines of text. 
@@ -245,7 +249,8 @@ void draw()
   else if (lang.equals("Korean"))
   {
     defaultLanguage = Language.Korean;
-    DTEXT = "안녕하세요 반갑습니다 각"; 
+    DTEXT = decompose(korDTEXT)[0]; // decompose the Korean text
+    markersString = decompose(korDTEXT)[1];
     font = createFont("Noto Sans CJK KR", 32); // setting the default Korean font
     textFont(font);
   }
@@ -486,7 +491,7 @@ void charGroupingFeature(String line, int frequency, float margin, float lineTop
     {
       if (!group.equals(lastSentGroup))
       {
-        sendToBrailleGroup(group, "*", "@"); // send the group to the Arduino
+        sendToBrailleGroup(group, "*", "@", markersString, j, endIndex); // send the group to the Arduino
         lastSentGroup = group; // update the last sent group
       }
     }
@@ -615,7 +620,7 @@ void slidingWindowFeature(String line, int frequency, float margin, float lineTo
       {
         if (!group.equals(lastSentGroup)) // send only if this is a new group
         {
-          sendToBrailleGroup(group, "#", "+"); // send the group to the Arduino
+          sendToBrailleGroup(group, "#", "+", markersString, startIndex, endIndex); // send the group to the Arduino
           lastSentGroup = group; // update the last sent group
         }
       }
@@ -640,7 +645,7 @@ void wordGroupingFeature(String line, float margin, float lineTopEnd, float line
     // Prevent text Overflow
     if (lineLeftEnd + wordWidth > width - margin)
     {
-      println("text Overfflow Prevented!");
+      println("Text Overflow Prevented!");
       lineLeftEnd = margin; // reset the line X position
     }
 
@@ -651,7 +656,7 @@ void wordGroupingFeature(String line, float margin, float lineTopEnd, float line
     {
       if (!word.equals(lastSentGroup))
       {
-        sendToBrailleGroup(word, "^", "|"); // send the group to the Arduino
+        //sendToBrailleGroup(word, "^", "|"); // send the group to the Arduino
         lastSentGroup = word; // update the last sent group
       }
     }

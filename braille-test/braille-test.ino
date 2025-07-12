@@ -13,6 +13,8 @@ String receivedData = "";
 String currentWord = "";
 bool newGroupReceived = false;
 bool newWordAvailable = false;
+char language = '\0'; // 'E' for English, 'K' for Korean, etc.
+bool languageSet = false;
 int scrollIndex = 0;
 int scrollTimer = 0;
 
@@ -147,12 +149,22 @@ void loop()
   {
     char incomingChar = Serial.read();
 
-    if (incomingChar == '*' || incomingChar == '#' || incomingChar == '^')
+    if (incomingChar == 'E' || incomingChar == 'K')
     {
-      newGroupReceived = true;
-      receivedData = ""; // Clear when new group starts
+      language = incomingChar; // Set the language
+      languageSet = true; // Mark that the language has been set
+      continue; // Skip further processing for this character
     }
-    else if (incomingChar == '@' || incomingChar == '+' || incomingChar == '|')
+
+    if (incomingChar == '*' || incomingChar == '#' || incomingChar == '^') // start markers for different features
+    {
+      if (languageSet)
+      {
+        newGroupReceived = true;
+        receivedData = ""; // Clear when new group starts
+      }
+    }
+    else if (incomingChar == '@' || incomingChar == '+' || incomingChar == '|') // end markers for different features
     {
       if (newGroupReceived)
       {
@@ -169,6 +181,10 @@ void loop()
       {
         processBrailleGroup(receivedData, incomingChar);
       }
+
+      // reset the language stuff for the next group
+      language = '\0'; // Reset the language
+      languageSet = false; // Reset the language set flag
     }
     else
     {
@@ -202,88 +218,104 @@ char isNumericandReplace(char c)
   return '\0';
 }
 
+
 void processBrailleGroup(String group, char c)
 {
   int groupLength = group.length(); 
-
-  if (c == '@') // end marker for character grouping feature
+  if (language == '\0') // If language is not set, do nothing
   {
-    for (int i = 0; i < groupLength; i++)
+    return;
+  }
+  else if (language == 'K') // Korean
+  {
+    if (c == '@') // end marker for character grouping feature
     {
-      if (i < CELL_COUNT) 
+      int start = 0;
+      // count the number of tokens (segments between '-')
+      int tokenCount = 1;
+      for (int i = 0; i < groupLength; i++)
+      {
+        if (group.charAt(i) == '-') tokenCount++;
+      }
+
+      int currentIndex = 0; int nextIndex = 0;
+      for (int i = 0; i < CELL_COUNT; i++)
+      {
+        nextIndex = group.indexOf('-', currentIndex);
+        if (nextIndex == -1) // no more '-' found, take the rest of the string
+        {
+          nextIndex = groupLength;
+        }
+        String token = group.substring(currentIndex, nextIndex);
+
+        unsigned long fullValue = strtoul(token.c_str(), NULL, 16);  // Convert to unsigned long (hex base 16)
+
+        byte b = (byte)(fullValue & 0xFF); // Extract lowest byte
+
+        display.binaryWriteCell(i, b); // Write the byte to the display
+
+        currentIndex = nextIndex + 1; // Move to the next segment
+      }
+    }
+  }
+  else if (language == 'E') // English
+  {
+    if (c == '@') // end marker for character grouping feature
+    {
+      for (int i = 0; i < groupLength; i++)
+      {
+        if (i < CELL_COUNT) 
+        {
+          if (isNumericandReplace(group[i]) != '\0')
+          {
+            display.writeCell(isNumericandReplace(group[i]), i);
+          }
+          else
+          {
+            display.writeCell(group[i], i);
+          }
+        }
+      }
+    }
+    else if (c == '+') // end marker for sliding window feature
+    {
+      int middleIndex = (groupLength - 1) / 2;
+
+      // Left side: Assign decreasing indices before 3
+      int leftCellIndex = 3 - (middleIndex);
+      
+      for (int i = 0; i < middleIndex; i++) 
       {
         if (isNumericandReplace(group[i]) != '\0')
         {
-          display.writeCell(isNumericandReplace(group[i]), i);
+          display.writeCell(isNumericandReplace(group[i]), leftCellIndex + i);
         }
         else
         {
-          display.writeCell(group[i], i);
+          display.writeCell(group[i], leftCellIndex + i);
+        }
+      }
+      // Middle character at index 3
+      if (isNumericandReplace(group[middleIndex]) != '\0')
+      {
+        display.writeCell(isNumericandReplace(group[middleIndex]), 3);
+      }
+      else
+      {
+        display.writeCell(group[middleIndex], 3);
+      }
+      // Right side: Start from index 4 and continue
+      for (int i = middleIndex + 1; i < groupLength; i++) 
+      {
+        if (isNumericandReplace(group[i]) != '\0')
+        {
+          display.writeCell(isNumericandReplace(group[i]), 3 + (i - middleIndex));
+        }
+        else 
+        {
+          display.writeCell(group[i], 3 + (i - middleIndex));
         }
       }
     }
   }
-  else if (c == '+') // end marker for sliding window feature
-  {
-    int middleIndex = (groupLength - 1) / 2;
-
-    // Left side: Assign decreasing indices before 3
-    int leftCellIndex = 3 - (middleIndex);
-    
-    for (int i = 0; i < middleIndex; i++) 
-    {
-      if (isNumericandReplace(group[i]) != '\0')
-      {
-        display.writeCell(isNumericandReplace(group[i]), leftCellIndex + i);
-      }
-      else
-      {
-        display.writeCell(group[i], leftCellIndex + i);
-      }
-    }
-    // Middle character at index 3
-    if (isNumericandReplace(group[middleIndex]) != '\0')
-    {
-      display.writeCell(isNumericandReplace(group[middleIndex]), 3);
-    }
-    else
-    {
-      display.writeCell(group[middleIndex], 3);
-    }
-    // Right side: Start from index 4 and continue
-    for (int i = middleIndex + 1; i < groupLength; i++) 
-    {
-      if (isNumericandReplace(group[i]) != '\0')
-      {
-        display.writeCell(isNumericandReplace(group[i]), 3 + (i - middleIndex));
-      }
-      else 
-      {
-        display.writeCell(group[i], 3 + (i - middleIndex));
-      }
-    }
-  }
-  // else if (c == '|')
-  // {
-  //   uint16_t charsArray[groupLength];
-
-  //   if (groupLength <= CELL_COUNT)
-  //   {
-  //     for (int i = 0; i < groupLength; i++)
-  //     {
-  //       display.writeCell(group[i], i);
-  //     }
-  //   }
-  //   else if (groupLength > CELL_COUNT)
-  //   {
-  //     for (int i = 0; i < groupLength; i++)
-  //     {
-  //       char c = tolower(group.charAt(i));
-  //       uint16_t unicode = charToBraille(c);
-  //       charsArray[i] = unicode;
-  //     }
-      
-  //     display.writeCells(charsArray, groupLength);
-  //   }
-  // }
 }

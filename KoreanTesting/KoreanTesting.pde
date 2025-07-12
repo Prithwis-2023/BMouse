@@ -3,7 +3,7 @@ import java.util.Map;
 
 Serial myPort;
 
-String s = "마마";
+String s = "안 각";
 
 final char[] CHOESEONG = 
 {
@@ -88,9 +88,119 @@ void setup()
     //textSize(32);
     myPort = new Serial(this, Serial.list()[0], 9600);
 
-    KoreanToBraille(s);
+    //KoreanToBraille(s);
     //println(hex('⠣'));
-    
+    println(bUnicodesString(decompose(s)[0].substring(3, 6), decompose(s)[1], 3, 6)); // Decomposing the string to see the output
+    //println(decompose(s)[0].substring(3, 6)); // Decomposing the string to see the output
+    //println(decompose(s)[1].substring(3, 6)); // Decomposing the string to see the output
+}
+
+String[] decompose(String inputString)
+{
+  String markers = ""; String decomposedString = "";
+  for (int i = 0; i < inputString.length(); i++)
+  {
+    char ch = inputString.charAt(i);
+    if (ch >= 0xAC00 && ch <= 0xD7A3)  // check if the character is a Hanguel syllable
+    {
+      int syllableIndex = ch - 0xAC00;
+      int choeseongIndex = syllableIndex / (21 * 28);
+      int jungseongIndex = (syllableIndex % (21 * 28)) / 28;
+      int jongseongIndex = syllableIndex % 28;
+
+      char choeseong = CHOESEONG[choeseongIndex];
+      char jungseong = JUNGSEONG[jungseongIndex];
+      char jongseong = JONGSEONG[jongseongIndex];
+
+      if (choeseong == 'ㅇ') // If the choeseong is the voiceless circle, we don't need to append it
+      {
+        decomposedString += str(jungseong);
+        markers += str('j'); // j for jungseong
+      }
+      else
+      {
+        decomposedString += str(choeseong) + str(jungseong);
+        markers += str('C') + str('j'); // C for choeseong, j for jungseong
+      }
+      
+      if (jongseong != '\0')
+      {
+        decomposedString += str(jongseong);
+        markers += 'J'; // J for jongseong
+      }
+    }
+    else
+    {
+      markers += 'O'; // If not a Hanguel syllable, just append the 'O' marker
+      decomposedString += ch; // If not a Hanguel syllable, just append the character
+    }
+  }
+  return  new String[] {decomposedString, markers};
+}
+
+
+String bUnicodesString (String group, String markerString, int startIndex, int endIndex)
+{
+  char[] decomposedArray = group.toCharArray();
+  String filteredMarkersString = markerString.substring(startIndex, endIndex); // Get the markers for the current group
+  char[] markersArray = filteredMarkersString.toCharArray();
+
+  StringBuilder result = new StringBuilder(); // StringBuilder objects are mutable, allowing for modifications
+  
+  for (int i = 0; i < decomposedArray.length; i++)
+  {
+    char ch = decomposedArray[i]; // Get the character which is either a choeseong, jungseong, or jongseong
+    if (markersArray[i] == 'C') // if the next character is 'C', it is a choeseong. We don't need to check whether choeseong is the voiceless circle as decompose() already handles that
+    {
+      for (int j = 0; j < korBrailleDB.length; j++)
+      {
+        if (korBrailleDB[j][0].equals(hex(ch)))
+        {
+          result.append(convertBDotTo1ByteCode(korBrailleDB[j][1])); // Append the Braille representation of the choeseong
+          break;
+        }
+      }
+    }
+    else if (markersArray[i] == 'J') // if the next character is 'J', its a jongseong. We don't need to check whether jongseong is not present as decompose() already handles that
+    {
+      for (int j = 0; j < korBrailleDB.length; j++)
+      {
+        if (korBrailleDB[j][0].equals(hex(ch)))
+        {
+          result.append(convertBDotTo1ByteCode(korBrailleDB[j][2])); // Append the Braille representation of the jongseong
+          break;
+        }
+      }
+    }
+    else if (markersArray[i] == 'j') // if the next character is 'j', its a jungseong
+    {
+      for (int j = 0; j < korBrailleDB2.length; j++)
+      {
+        if (korBrailleDB2[j][0].equals(hex(ch)))
+        {
+          result.append(convertBDotTo1ByteCode(korBrailleDB2[j][1])); // Append the Braille representation of the jungseong
+          if (!korBrailleDB2[j][2].equals("-")) // If there is a second part of the jungseong
+          {
+            result.append(convertBDotTo1ByteCode(korBrailleDB2[j][2])); // Append the second part of the jungseong
+          }
+          break;
+        }
+      }
+    }
+    else if (markersArray[i] == 'O') // if the next character is 'O', its a non-Hanguel character
+    {
+      if (decomposedArray[i] == ' ')
+      {
+        result.append("00");
+      }
+      else
+      {
+        result.append(ch); // If not a Hanguel syllable, just append the character
+      }
+    }
+  }
+  String RESULT = result.toString(); // Convert StringBuilder to String
+  return RESULT; // Return the result
 }
 
 void sendToArduino(String[] hanguelBlock)
