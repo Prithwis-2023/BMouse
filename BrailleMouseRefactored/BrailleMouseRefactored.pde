@@ -93,7 +93,7 @@ void setup()
 }
 
 // function to send the group to the Arduino
-void sendToBrailleGroup(String group, String startMarker, String endMarker, String markerString, int startIndex, int endIndex)
+void sendToBrailleGroup(String group, String startMarker, String endMarker, String markerString, int startIndex, int endIndex, int spaces)
 {
   if (myPort != null)
   {
@@ -105,7 +105,7 @@ void sendToBrailleGroup(String group, String startMarker, String endMarker, Stri
     }
     else if (defaultLanguage == Language.Korean)
     {
-      String brailleString = 'K' + startMarker + bUnicodesString(group, markerString, startIndex, endIndex) + endMarker;
+      String brailleString = 'K' + startMarker + bUnicodesString(group, markerString, startIndex, endIndex, spaces) + endMarker;
       myPort.write(brailleString); // send the braille string to the Arduino
       println("Sent to Arduino: " + brailleString); // Debugging output
     }
@@ -491,7 +491,7 @@ void charGroupingFeature(String line, int frequency, float margin, float lineTop
     {
       if (!group.equals(lastSentGroup))
       {
-        sendToBrailleGroup(group, "*", "@", markersString, j, endIndex); // send the group to the Arduino
+        sendToBrailleGroup(group, "*", "@", markersString, j, endIndex, 0); // send the group to the Arduino
         lastSentGroup = group; // update the last sent group
       }
     }
@@ -575,6 +575,8 @@ void slidingWindowFeature(String line, int frequency, float margin, float lineTo
     }
     else // Normal Case: there are enough characters to the left
     {
+      spaces = 0; // reset the spaces
+      
       if (slidingWindowSize % 2 != 0)
       {
         startIndex = j - leftRightChars; // start index for the substring
@@ -620,7 +622,7 @@ void slidingWindowFeature(String line, int frequency, float margin, float lineTo
       {
         if (!group.equals(lastSentGroup)) // send only if this is a new group
         {
-          sendToBrailleGroup(group, "#", "+", markersString, startIndex, endIndex); // send the group to the Arduino
+          sendToBrailleGroup(group, "#", "+", markersString, startIndex, endIndex, spaces); // send the group to the Arduino
           lastSentGroup = group; // update the last sent group
         }
       }
@@ -660,7 +662,7 @@ void wordGroupingFeature(String line, float margin, float lineTopEnd, float line
     {
       if (!word.equals(lastSentGroup))
       {
-        sendToBrailleGroup(word, "^", "|",  markersString, startIndex, endIndex); // send the group to the Arduino
+        sendToBrailleGroup(word, "^", "|",  markersString, startIndex, endIndex, 0); // send the group to the Arduino
         lastSentGroup = word; // update the last sent group
       }
     }
