@@ -64,54 +64,99 @@ ISR(TIMER2_COMPA_vect) // timer 2 interrupt
     {
       scrollTimer = 0;
 
-      int wordLength = currentWord.length();
-      if (wordLength <= CELL_COUNT)
+      if (language == 'E')
       {
-        // word is short
-        for (int i = 0; i < wordLength; i++)
+        int wordLength = currentWord.length();
+        if (wordLength <= CELL_COUNT)
         {
-          if (isNumericandReplace(currentWord[i]) != '\0')
+          // word is short
+          for (int i = 0; i < wordLength; i++)
           {
-            display.writeCell(isNumericandReplace(currentWord[i]), i);
-          }
-          else
-          {
-            display.writeCell(currentWord[i], i);
-          }
-        }
-        newWordAvailable = false; // done and no scrolling needed
-      }
-      else
-      {
-        display.clear(); // clear once per frame
-
-        // scroll the word
-        for (int i = 0; i < CELL_COUNT; i++)
-        {
-          int charIndex = scrollIndex + i;
-          if (charIndex < wordLength)
-          {
-            if (isNumericandReplace(currentWord[charIndex]) != '\0')
+            if (isNumericandReplace(currentWord[i]) != '\0')
             {
-              display.writeCell(isNumericandReplace(currentWord[charIndex]), i);
+              display.writeCell(isNumericandReplace(currentWord[i]), i);
             }
             else
             {
-              display.writeCell(currentWord[charIndex], i);
+              display.writeCell(currentWord[i], i);
             }
           }
-          else
+          newWordAvailable = false; // done and no scrolling needed
+        }
+        else
+        {
+          display.clear(); // clear once per frame
+
+          // scroll the word
+          for (int i = 0; i < CELL_COUNT; i++)
           {
-            display.writeCell(' ', i);
+            int charIndex = scrollIndex + i;
+            if (charIndex < wordLength)
+            {
+              if (isNumericandReplace(currentWord[charIndex]) != '\0')
+              {
+                display.writeCell(isNumericandReplace(currentWord[charIndex]), i);
+              }
+              else
+              {
+                display.writeCell(currentWord[charIndex], i);
+              }
+            }
+            else
+            {
+              display.writeCell(' ', i);   // pad if out of bounds
+            }
+          }
+          scrollIndex++;
+
+          // if scrolling has finished
+          if (scrollIndex > (wordLength - CELL_COUNT))
+          {
+            scrollIndex = 0;
+            newWordAvailable = false;
           }
         }
-        scrollIndex++;
-
-        // if scrolling has finished
-        if (scrollIndex > (wordLength - CELL_COUNT))
+      }
+      else if (language == 'K')
+      {
+        int wordLength = currentWord.length() / 2; // each character is represented by 2 hex digits
+        if (wordLength <= CELL_COUNT)              // word is short
         {
-          scrollIndex = 0;
-          newWordAvailable = false;
+          for (int i = 0; i < currentWord.length() - 1; i+= 2)
+          {
+            String hexByteStr = currentWord.substring(i, i + 2);
+            int decimalVal = (int) strtol(hexByteStr.c_str(), NULL, 16); // Convert hex to decimal
+            display.binaryWriteCell(i/2, decimalVal);
+          }
+          newWordAvailable = false; // done and no scrolling needed
+        }
+        else
+        {
+          display.clear(); // clear once per frame
+
+          // scroll the word
+          for (int i = 0; i < CELL_COUNT; i++)
+          {
+            int charIndex = scrollIndex + i;
+            if (charIndex < wordLength)
+            {
+              String hexByteStr = currentWord.substring(charIndex * 2, charIndex * 2 + 2);
+              int decimalVal = (int) strtol(hexByteStr.c_str(), NULL, 16); // Convert hex to decimal
+              display.binaryWriteCell(i, decimalVal);
+            }
+            else
+            {
+              display.binaryWriteCell(i, 0); // clear cell if no character available
+            }
+          }
+          scrollIndex++;
+
+          // if scrolling has finished
+          if (scrollIndex > (wordLength - CELL_COUNT))
+          {
+            scrollIndex = 0;
+            newWordAvailable = false;
+          }
         }
       }
     }
@@ -230,31 +275,11 @@ void processBrailleGroup(String group, char c)
   {
     if (c == '@') // end marker for character grouping feature
     {
-      int start = 0;
-      // count the number of tokens (segments between '-')
-      int tokenCount = 1;
-      for (int i = 0; i < groupLength; i++)
+      for (int i = 0; i < groupLength - 1; i += 2)
       {
-        if (group.charAt(i) == '-') tokenCount++;
-      }
-
-      int currentIndex = 0; int nextIndex = 0;
-      for (int i = 0; i < CELL_COUNT; i++)
-      {
-        nextIndex = group.indexOf('-', currentIndex);
-        if (nextIndex == -1) // no more '-' found, take the rest of the string
-        {
-          nextIndex = groupLength;
-        }
-        String token = group.substring(currentIndex, nextIndex);
-
-        unsigned long fullValue = strtoul(token.c_str(), NULL, 16);  // Convert to unsigned long (hex base 16)
-
-        byte b = (byte)(fullValue & 0xFF); // Extract lowest byte
-
-        display.binaryWriteCell(i, b); // Write the byte to the display
-
-        currentIndex = nextIndex + 1; // Move to the next segment
+        String hexByteStr = group.substring(i, i + 2);
+        int decimalVal = (int) strtol(hexByteStr.c_str(), NULL, 16); // Convert hex to decimal
+        display.binaryWriteCell(i / 2, decimalVal);
       }
     }
   }

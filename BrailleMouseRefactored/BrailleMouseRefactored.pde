@@ -638,6 +638,7 @@ void wordGroupingFeature(String line, float margin, float lineTopEnd, float line
 
   // Second Pass: create the groups and draw the box around the text
   String[] words = line.split(" "); // split the line into words
+  int charPointer = 0; // character pointer to track the position in the line for KOR
   for (String word : words)
   {
     float wordWidth = textWidth(word); // measure the width of the word
@@ -651,15 +652,19 @@ void wordGroupingFeature(String line, float margin, float lineTopEnd, float line
 
     drawGroupBox(lineLeftEnd, lineTopEnd, wordWidth, lineHeight); // draw the bounding box
 
+    int startIndex = charPointer; // start index for the word
+    int endIndex = charPointer + word.length(); // end index for the word
+
     // Third pass: sending the group to the Arduino and handling pointer interaction
     if (mouseX >= lineLeftEnd && mouseX <= lineLeftEnd + wordWidth && mouseY >= lineTopEnd && mouseY <= lineTopEnd + lineHeight)
     {
       if (!word.equals(lastSentGroup))
       {
-        //sendToBrailleGroup(word, "^", "|"); // send the group to the Arduino
+        sendToBrailleGroup(word, "^", "|",  markersString, startIndex, endIndex); // send the group to the Arduino
         lastSentGroup = word; // update the last sent group
       }
     }
+    charPointer += word.length() + 1; // update the character pointer for the next word (including space)
     lineLeftEnd += wordWidth + textWidth(' '); // update the line left end position for the next word
   }
 }
