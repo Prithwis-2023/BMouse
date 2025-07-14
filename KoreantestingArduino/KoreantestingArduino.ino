@@ -1,4 +1,5 @@
 #include <BrailleDisplay.h>
+#include <Arduino.h>
 
 #define CELL_COUNT 8
 #define ON_PIN 6
@@ -8,45 +9,192 @@
 #define DOUT_PIN 2
 
 BrailleDisplay display(CELL_COUNT, ON_PIN, DIN_PIN, LATCH_PIN, CLK_PIN, DOUT_PIN);
+String receivedData = "";
+String currentWord = "";
+bool newGroupReceived = false;
+bool newWordAvailable = false;
+char language = '\0'; // 'E' for English, 'K' for Korean, etc.
+bool languageSet = false;
+int scrollIndex = 0;
+int scrollTimer = 0;
 
-uint8_t cells[CELL_COUNT];
+char digits[10] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
+char alphabets[10] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'};
 
-void binaryWriteCell(uint8_t position, byte byteVal)
+bool lastButtonStatePrev = HIGH;
+bool lastButtonStateIdle = HIGH;
+bool lastButtonStateNext = HIGH;
+
+void setup()
 {
-    byte sortedByte;
-    byte againSortedByte;
+  /*pinMode(11, INPUT_PULLUP); // the previous button
+  pinMode(12, INPUT_PULLUP); // idle button (TBD)
+  pinMode(13, INPUT_PULLUP); // next button*/
 
-    bitWrite(sortedByte, 7, bitRead(byteVal, 6));
-    bitWrite(sortedByte, 6, bitRead(byteVal, 7));
-    bitWrite(sortedByte, 5, bitRead(byteVal, 2));
-    bitWrite(sortedByte, 4, bitRead(byteVal, 1));
-    bitWrite(sortedByte, 3, bitRead(byteVal, 0));
-    bitWrite(sortedByte, 2, bitRead(byteVal, 5));
-    bitWrite(sortedByte, 1, bitRead(byteVal, 4));
-    bitWrite(sortedByte, 0, bitRead(byteVal, 3));
+  Serial.begin(9600);
+  display.begin();
+  display.clear();
 
-    sortedByte = ~sortedByte;
-    // bitWrite(againSortedByte, 7, bitRead(sortedByte, 6));
-    // bitWrite(againSortedByte, 6, bitRead(sortedByte, 7));
-    // bitWrite(againSortedByte, 5, bitRead(sortedByte, 2));
-    // bitWrite(againSortedByte, 4, bitRead(sortedByte, 1));
-    // bitWrite(againSortedByte, 3, bitRead(sortedByte, 0));
-    // bitWrite(againSortedByte, 2, bitRead(sortedByte, 5));
-    // bitWrite(againSortedByte, 1, bitRead(sortedByte, 4));
-    // bitWrite(againSortedByte, 0, bitRead(sortedByte, 3));
-    
+  cli();
 
-    cells[CELL_COUNT - position - 1] = sortedByte;
+  // set timer2 (8 bits) at the interrupt frequency 1 kHz
+  TCCR2A = 0; // set entire TCCR2A register to 0
+  TCCR2B = 0; // same for TCCR2B
+  TCNT2  = 0; // initialize counter variable to 0
 
-    digitalWrite(LATCH_PIN, LOW);
-    for (int i = CELL_COUNT - 1; i >= 0; i--)
-    {
-      shiftOut(DIN_PIN, CLK_PIN, MSBFIRST, cells[i]);
-    }
-    digitalWrite(LATCH_PIN, HIGH);
+  // set compare match register for 1 kHz increments
+  OCR2A = 222; // (16 * 10^6) / (1000 * 64) - 1 [ must be  < 256]
+  // turn on CTC mode
+  TCCR2A |= (1 << WGM21);
+  // Set CS22 bit for 64 prescaler
+  TCCR2B |= (1 << CS22);
+  // enable timer compare interrupt
+  TIMSK2 |= (1 << OCIE2A);
+
+  sei(); // allow interrupts
 }
 
-void processBrailleGroup(char language, String group, char c)
+ISR(TIMER2_COMPA_vect) // timer 2 interrupt  
+{
+  if (newWordAvailable)
+  {
+    scrollTimer++;
+
+    if (scrollTimer >= 500)
+    {
+      scrollTimer = 0;
+
+      if (language == 'E')
+      {
+        int wordLength = currentWord.length();
+        if (wordLength <= CELL_COUNT)
+        {
+          // word is short
+          for (int i = 0; i < wordLength; i++)
+          {
+            if (isNumericandReplace(currentWord[i]) != '\0')
+            {
+              display.writeCell(isNumericandReplace(currentWord[i]), i);
+            }
+            else
+            {
+              display.writeCell(currentWord[i], i);
+            }
+          }
+          newWordAvailable = false; // done and no scrolling needed
+        }
+        else
+        {
+          display.clear(); // clear once per frame
+
+          // scroll the word
+          for (int i = 0; i < CELL_COUNT; i++)
+          {
+            int charIndex = scrollIndex + i;
+            if (charIndex < wordLength)
+            {
+              if (isNumericandReplace(currentWord[charIndex]) != '\0')
+              {
+                display.writeCell(isNumericandReplace(currentWord[charIndex]), i);
+              }
+              else
+              {
+                display.writeCell(currentWord[charIndex], i);
+              }
+            }
+            else
+            {
+              display.writeCell(' ', i);   // pad if out of bounds
+            }
+          }
+          scrollIndex++;
+
+          // if scrolling has finished
+          if (scrollIndex > (wordLength - CELL_COUNT))
+          {
+            scrollIndex = 0;
+            newWordAvailable = false;
+          }
+        }
+      }
+      else if (language == 'K')
+      {
+        int wordLength = currentWord.length() / 2; // each character is represented by 2 hex digits
+        if (wordLength <= CELL_COUNT)              // word is short
+        {
+          for (int i = 0; i < currentWord.length() - 1; i+= 2)
+          {
+            String hexByteStr = currentWord.substring(i, i + 2);
+            int decimalVal = (int) strtol(hexByteStr.c_str(), NULL, 16); // Convert hex to decimal
+            display.binaryWriteCell(i/2, decimalVal);
+          }
+          newWordAvailable = false; // done and no scrolling needed
+        }
+        else
+        {
+          display.clear(); // clear once per frame
+
+          // scroll the word
+          for (int i = 0; i < CELL_COUNT; i++)
+          {
+            int charIndex = scrollIndex + i;
+            if (charIndex < wordLength)
+            {
+              String hexByteStr = currentWord.substring(charIndex * 2, charIndex * 2 + 2);
+              int decimalVal = (int) strtol(hexByteStr.c_str(), NULL, 16); // Convert hex to decimal
+              display.binaryWriteCell(i, decimalVal);
+            }
+            else
+            {
+              display.binaryWriteCell(i, 0); // clear cell if no character available
+            }
+          }
+          scrollIndex++;
+
+          // if scrolling has finished
+          if (scrollIndex > (wordLength - CELL_COUNT))
+          {
+            scrollIndex = 0;
+            newWordAvailable = false;
+          }
+        }
+      }
+    }
+  }
+}
+
+bool testRun = false; // Only run once
+
+void loop()
+{
+  if (!testRun)
+  {
+    language = 'K';
+    languageSet = true;
+    receivedData = "2312093136"; // corresponds to: K*2312093136@
+      
+    processBrailleGroup(receivedData, '@');  // simulate receiving K*...@
+    
+    testRun = true; // prevents rerunning forever
+  }
+}
+
+
+char isNumericandReplace(char c)
+{
+  for (int i = 0; i < 10; i++)
+  {
+    if (c == digits[i])
+    {
+      return alphabets[i];
+      break;
+    }
+  }
+  return '\0';
+}
+
+
+void processBrailleGroup(String group, char c)
 {
   int groupLength = group.length(); 
   if (language == '\0') // If language is not set, do nothing
@@ -57,65 +205,72 @@ void processBrailleGroup(char language, String group, char c)
   {
     if (c == '@') // end marker for character grouping feature
     {
-      int start = 0;
-      // count the number of tokens (segments between '-')
-      int tokenCount = 1;
-      for (int i = 0; i < groupLength; i++)
+      for (int i = 0; i < groupLength - 1; i += 2)
       {
-        if (group.charAt(i) == '-') tokenCount++;
+        String hexByteStr = group.substring(i, i + 2);
+        int decimalVal = (int) strtol(hexByteStr.c_str(), NULL, 16); // Convert hex to decimal
+        display.binaryWriteCell(i / 2, decimalVal);
       }
-      int dashIndices[tokenCount - 1]; // One less dash than tokens
-      int dashIndex = 0;
-
-      for (int i = 0; i < groupLength; i++)
-      {
-        if (group.charAt(i) == '-' && dashIndex < tokenCount - 1)
-        {
-          dashIndices[dashIndex] = i;
-          dashIndex++;
-        }
-      }
-      for (int i = 0; i < tokenCount - 1; i++)
-      {
-        int dashPos = dashIndices[i]; 
-        char a = group.charAt(dashPos-2);
-        char b = group.charAt(dashPos-1);
-        int firstPart = a - '0'; // Convert char to int
-        int secondPart = b - '0'; // Convert char to int
-        int decimalVal = firstPart * 16 + secondPart; // Convert to decimal
-        binaryWriteCell(1, decimalVal);
-        delay(500);
-      }
-      int finalDashPos = dashIndices[tokenCount - 2];
-      char finFPart = group.charAt(finalDashPos + 1);
-      char finSPart = group.charAt(finalDashPos + 2);
-      int firstPart = finFPart - '0';
-      int secondPart = finSPart - '0';
-      int finalDecimalVal = firstPart * 16 + secondPart;
-      Serial.println(finalDecimalVal);
-      binaryWriteCell(1, finalDecimalVal);
     }
   }
-}
-void setup() 
-{
-  //Serial.begin(9600);
-  display.begin();
-  display.clear();
-  binaryWriteCell(1, 51);
+  else if (language == 'E') // English
+  {
+    if (c == '@') // end marker for character grouping feature
+    {
+      for (int i = 0; i < groupLength; i++)
+      {
+        if (i < CELL_COUNT) 
+        {
+          if (isNumericandReplace(group[i]) != '\0')
+          {
+            display.writeCell(isNumericandReplace(group[i]), i);
+          }
+          else
+          {
+            display.writeCell(group[i], i);
+          }
+        }
+      }
+    }
+    else if (c == '+') // end marker for sliding window feature
+    {
+      int middleIndex = (groupLength - 1) / 2;
 
-  String group = "23-12-09-31-36-1A-23-20-1D-2C";
-
-  //processBrailleGroup('K', group, '@');
-}
-
-void loop() 
-{
-  // if (Serial.available())
-  // {
-  //   uint8_t byteVal = Serial.read();
-
-  //   binaryWriteCell(1, byteVal);
-  // }
-  
+      // Left side: Assign decreasing indices before 3
+      int leftCellIndex = 3 - (middleIndex);
+      
+      for (int i = 0; i < middleIndex; i++) 
+      {
+        if (isNumericandReplace(group[i]) != '\0')
+        {
+          display.writeCell(isNumericandReplace(group[i]), leftCellIndex + i);
+        }
+        else
+        {
+          display.writeCell(group[i], leftCellIndex + i);
+        }
+      }
+      // Middle character at index 3
+      if (isNumericandReplace(group[middleIndex]) != '\0')
+      {
+        display.writeCell(isNumericandReplace(group[middleIndex]), 3);
+      }
+      else
+      {
+        display.writeCell(group[middleIndex], 3);
+      }
+      // Right side: Start from index 4 and continue
+      for (int i = middleIndex + 1; i < groupLength; i++) 
+      {
+        if (isNumericandReplace(group[i]) != '\0')
+        {
+          display.writeCell(isNumericandReplace(group[i]), 3 + (i - middleIndex));
+        }
+        else 
+        {
+          display.writeCell(group[i], 3 + (i - middleIndex));
+        }
+      }
+    }
+  }
 }

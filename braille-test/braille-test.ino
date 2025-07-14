@@ -27,9 +27,9 @@ bool lastButtonStateNext = HIGH;
 
 void setup()
 {
-  pinMode(11, INPUT_PULLUP); // the previous button
+  /*pinMode(11, INPUT_PULLUP); // the previous button
   pinMode(12, INPUT_PULLUP); // idle button (TBD)
-  pinMode(13, INPUT_PULLUP); // next button
+  pinMode(13, INPUT_PULLUP); // next button*/
 
   Serial.begin(9600);
   display.begin();
@@ -165,7 +165,7 @@ ISR(TIMER2_COMPA_vect) // timer 2 interrupt
 
 void loop()
 {
-  bool buttonStatePrev = digitalRead(11);
+  /*bool buttonStatePrev = digitalRead(11);
   bool buttonStateIdle = digitalRead(12);
   bool buttonStateNext = digitalRead(13);
   
@@ -186,7 +186,7 @@ void loop()
   }
   lastButtonStatePrev = buttonStatePrev;
   lastButtonStateIdle = buttonStateIdle;
-  lastButtonStateNext = buttonStateNext;
+  lastButtonStateNext = buttonStateNext;*/
   
   // Read serial input
   
@@ -225,11 +225,10 @@ void loop()
       else
       {
         processBrailleGroup(receivedData, incomingChar);
+        // reset the language stuff for the next group
+        language = '\0'; // Reset the language
+        languageSet = false; // Reset the language set flag
       }
-
-      // reset the language stuff for the next group
-      language = '\0'; // Reset the language
-      languageSet = false; // Reset the language set flag
     }
     else
     {
