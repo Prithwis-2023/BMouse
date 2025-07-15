@@ -222,7 +222,7 @@ void loop()
         scrollIndex = 0; // start from the beginning
         newWordAvailable = true;
       }
-      else
+      else                      // for the rest of the features
       {
         processBrailleGroup(receivedData, incomingChar);
         // reset the language stuff for the next group
