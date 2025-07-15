@@ -115,23 +115,29 @@ String[] decompose(String inputString)
   return  new String[] {decomposedString, markers};
 }
 
-String bUnicodesString (String group, String markerString, int startIndex, int endIndex, int spaces)
+String bUnicodesString (String group, String markerString, int startIndex, int endIndex, int spacesLeft, int spacesRight)
 {
   char[] decomposedArray = group.toCharArray();
   String filteredMarkersString = markerString.substring(startIndex, endIndex); // Get the markers for the current group
   char[] originalMarkersArray = filteredMarkersString.toCharArray();
   
   // Create a new array with padding for the sliding window feature edge case
-  char[] markersArray = new char[spaces + originalMarkersArray.length];
-  // Fill the left-padding with 'O' as per the protocol
-  for (int i = 0; i < spaces; i++) 
+  int paddedLength = spacesLeft + originalMarkersArray.length + spacesRight;
+  char[] markersArray = new char[paddedLength];
+  // Fill the left-padding with 'O'
+  for (int i = 0; i < spacesLeft; i++) 
   {
     markersArray[i] = 'O';
   }
   // Copying the original markers into the rest
   for (int i = 0; i < originalMarkersArray.length; i++) 
   {
-    markersArray[spaces + i] = originalMarkersArray[i];
+    markersArray[spacesLeft + i] = originalMarkersArray[i];
+  }
+  // Fill the right-padding with 'O'
+  for (int i = spacesLeft + originalMarkersArray.length; i < paddedLength; i++) 
+  {
+    markersArray[i] = 'O';
   }
   
   StringBuilder result = new StringBuilder(); // StringBuilder objects are mutable, allowing for modifications

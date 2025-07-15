@@ -27,157 +27,50 @@ bool lastButtonStateNext = HIGH;
 
 void setup()
 {
-  /*pinMode(11, INPUT_PULLUP); // the previous button
-  pinMode(12, INPUT_PULLUP); // idle button (TBD)
-  pinMode(13, INPUT_PULLUP); // next button*/
-
   Serial.begin(9600);
-  display.begin();
-  display.clear();
-
-  cli();
-
-  // set timer2 (8 bits) at the interrupt frequency 1 kHz
-  TCCR2A = 0; // set entire TCCR2A register to 0
-  TCCR2B = 0; // same for TCCR2B
-  TCNT2  = 0; // initialize counter variable to 0
-
-  // set compare match register for 1 kHz increments
-  OCR2A = 222; // (16 * 10^6) / (1000 * 64) - 1 [ must be  < 256]
-  // turn on CTC mode
-  TCCR2A |= (1 << WGM21);
-  // Set CS22 bit for 64 prescaler
-  TCCR2B |= (1 << CS22);
-  // enable timer compare interrupt
-  TIMSK2 |= (1 << OCIE2A);
-
-  sei(); // allow interrupts
-}
-
-ISR(TIMER2_COMPA_vect) // timer 2 interrupt  
-{
-  if (newWordAvailable)
+  String group = "2303202A0309";
+  int groupLength = group.length();
+  int numberOfChars = groupLength / 2;
+  Serial.println(numberOfChars);
+  int middleCharIndex = (numberOfChars - 1) / 2;
+  Serial.print("Left: ");
+  int leftCellStart = 3 - middleCharIndex;
+  for (int i = 0; i < middleCharIndex; i++)
   {
-    scrollTimer++;
-
-    if (scrollTimer >= 500)
+    int cellIndex = leftCellStart + i;
+    if (cellIndex >= 0 && cellIndex < CELL_COUNT) // checking if inbound
     {
-      scrollTimer = 0;
-
-      if (language == 'E')
-      {
-        int wordLength = currentWord.length();
-        if (wordLength <= CELL_COUNT)
-        {
-          // word is short
-          for (int i = 0; i < wordLength; i++)
-          {
-            if (isNumericandReplace(currentWord[i]) != '\0')
-            {
-              display.writeCell(isNumericandReplace(currentWord[i]), i);
-            }
-            else
-            {
-              display.writeCell(currentWord[i], i);
-            }
-          }
-          newWordAvailable = false; // done and no scrolling needed
-        }
-        else
-        {
-          display.clear(); // clear once per frame
-
-          // scroll the word
-          for (int i = 0; i < CELL_COUNT; i++)
-          {
-            int charIndex = scrollIndex + i;
-            if (charIndex < wordLength)
-            {
-              if (isNumericandReplace(currentWord[charIndex]) != '\0')
-              {
-                display.writeCell(isNumericandReplace(currentWord[charIndex]), i);
-              }
-              else
-              {
-                display.writeCell(currentWord[charIndex], i);
-              }
-            }
-            else
-            {
-              display.writeCell(' ', i);   // pad if out of bounds
-            }
-          }
-          scrollIndex++;
-
-          // if scrolling has finished
-          if (scrollIndex > (wordLength - CELL_COUNT))
-          {
-            scrollIndex = 0;
-            newWordAvailable = false;
-          }
-        }
-      }
-      else if (language == 'K')
-      {
-        int wordLength = currentWord.length() / 2; // each character is represented by 2 hex digits
-        if (wordLength <= CELL_COUNT)              // word is short
-        {
-          for (int i = 0; i < currentWord.length() - 1; i+= 2)
-          {
-            String hexByteStr = currentWord.substring(i, i + 2);
-            int decimalVal = (int) strtol(hexByteStr.c_str(), NULL, 16); // Convert hex to decimal
-            display.binaryWriteCell(i/2, decimalVal);
-          }
-          newWordAvailable = false; // done and no scrolling needed
-        }
-        else
-        {
-          display.clear(); // clear once per frame
-
-          // scroll the word
-          for (int i = 0; i < CELL_COUNT; i++)
-          {
-            int charIndex = scrollIndex + i;
-            if (charIndex < wordLength)
-            {
-              String hexByteStr = currentWord.substring(charIndex * 2, charIndex * 2 + 2);
-              int decimalVal = (int) strtol(hexByteStr.c_str(), NULL, 16); // Convert hex to decimal
-              display.binaryWriteCell(i, decimalVal);
-            }
-            else
-            {
-              display.binaryWriteCell(i, 0); // clear cell if no character available
-            }
-          }
-          scrollIndex++;
-
-          // if scrolling has finished
-          if (scrollIndex > (wordLength - CELL_COUNT))
-          {
-            scrollIndex = 0;
-            newWordAvailable = false;
-          }
-        }
-      }
+      int hexStart = i * 2;
+      String hexByteStr = group.substring(hexStart, hexStart + 2);
+      int decimalVal = (int) strtol(hexByteStr.c_str(), NULL, 16); // Convert hex to decimal
+      display.binaryWriteCell(cellIndex, decimalVal);
+      Serial.print(hexStart);
     }
-  }
-}
-
-bool testRun = false; // Only run once
-
-void loop()
-{
-  if (!testRun)
-  {
-    language = 'K';
-    languageSet = true;
-    receivedData = "2312093136"; // corresponds to: K*2312093136@
-      
-    processBrailleGroup(receivedData, '@');  // simulate receiving K*...@
     
-    testRun = true; // prevents rerunning forever
   }
+  Serial.println();
+  Serial.print("Middle: ");
+  Serial.println(middleCharIndex * 2);
+  String middleCharHexByteStr = group.substring(middleCharIndex * 2, middleCharIndex * 2 + 2);
+  int middleCharDecimalVal = (int) strtol(middleCharHexByteStr.c_str(), NULL, 16);
+  display.binaryWriteCell(3, middleCharDecimalVal);
+
+  Serial.print("Right: ");
+  for (int i = middleCharIndex + 1; i < numberOfChars; i++)
+  {
+    int cellIndex = 3 + (i - middleCharIndex);
+    if (cellIndex >= 0 && cellIndex < CELL_COUNT)
+    {
+      int hexStart = i * 2;
+      String hexByteStr = group.substring(hexStart, hexStart + 2);
+      int decimalVal = (int) strtol(hexByteStr.c_str(), NULL, 16); // Convert hex to decimal
+      display.binaryWriteCell(cellIndex, decimalVal);
+      Serial.print(hexStart);
+    }
+  }                                                                                                       
 }
+
+void loop(){}
 
 
 char isNumericandReplace(char c)
@@ -193,6 +86,46 @@ char isNumericandReplace(char c)
   return '\0';
 }
 
+void slidingKor(String group, char c, char language)
+{
+  int groupLength = group.length();
+  if (c == '+' && language == 'K') // Korean sliding window
+  {
+    int numberOfChars = groupLength / 2;
+    int middleCharIndex = (numberOfChars - 1) / 2;
+    Serial.print("Left: ");
+    int leftCellStart = 3 - middleCharIndex;
+    for (int i = 0; i < middleCharIndex; i++)
+    {
+      int cellIndex = leftCellStart + i;
+      if (cellIndex >= 0 && cellIndex < CELL_COUNT) // checking if inbound
+      {
+        int hexStart = i * 2;
+        String hexByteStr = group.substring(hexStart, hexStart + 2);
+        int decimalVal = (int) strtol(hexByteStr.c_str(), NULL, 16); // Convert hex to decimal
+        display.binaryWriteCell(cellIndex, decimalVal);
+      }
+      Serial.print(cellIndex + " ");
+    }
+    Serial.println();
+    Serial.print("Middle: ");
+    String middleCharHexByteStr = group.substring(middleCharIndex * 2, middleCharIndex * 2 + 2);
+    int middleCharDecimalVal = (int) strtol(middleCharHexByteStr.c_str(), NULL, 16);
+    display.binaryWriteCell(3, middleCharDecimalVal);
+
+    for (int i = middleCharIndex + 1; i < numberOfChars; i++)
+    {
+      int cellIndex = 3 + (i - middleCharIndex);
+      if (cellIndex >= 0 && cellIndex < CELL_COUNT)
+      {
+        int hexStart = i * 2;
+        String hexByteStr = group.substring(hexStart, hexStart + 2);
+        int decimalVal = (int) strtol(hexByteStr.c_str(), NULL, 16); // Convert hex to decimal
+        display.binaryWriteCell(cellIndex, decimalVal);
+      }
+    }                                                                                                        
+  }
+}
 
 void processBrailleGroup(String group, char c)
 {

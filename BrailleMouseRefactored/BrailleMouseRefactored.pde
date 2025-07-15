@@ -93,7 +93,7 @@ void setup()
 }
 
 // function to send the group to the Arduino
-void sendToBrailleGroup(String group, String startMarker, String endMarker, String markerString, int startIndex, int endIndex, int spaces)
+void sendToBrailleGroup(String group, String startMarker, String endMarker, String markerString, int startIndex, int endIndex, int spacesLeft, int spacesRight)
 {
   if (myPort != null)
   {
@@ -105,7 +105,7 @@ void sendToBrailleGroup(String group, String startMarker, String endMarker, Stri
     }
     else if (defaultLanguage == Language.Korean)
     {
-      String brailleString = 'K' + startMarker + bUnicodesString(group, markerString, startIndex, endIndex, spaces) + endMarker;
+      String brailleString = 'K' + startMarker + bUnicodesString(group, markerString, startIndex, endIndex, spacesLeft, spacesRight) + endMarker;
       myPort.write(brailleString); // send the braille string to the Arduino
       delay(50);
       println("Sent to Arduino: " + brailleString); // Debugging output
@@ -492,7 +492,7 @@ void charGroupingFeature(String line, int frequency, float margin, float lineTop
     {
       if (!group.equals(lastSentGroup))
       {
-        sendToBrailleGroup(group, "*", "@", markersString, j, endIndex, 0); // send the group to the Arduino
+        sendToBrailleGroup(group, "*", "@", markersString, j, endIndex, 0, 0); // send the group to the Arduino
         lastSentGroup = group; // update the last sent group
       }
     }
@@ -508,7 +508,7 @@ void slidingWindowFeature(String line, int frequency, float margin, float lineTo
   int startIndex, endIndex; // start and end index for the sliding window
   String tempGroup; // temporary group to hold the characters
   String group; // final group to be sent to Serial
-  int spaces = 0; // used as padding for the group
+  int spacesLeft = 0, spacesRight = 0; // used as padding for the group
 
   if (slidingWindowSize % 2 != 0)
   {
@@ -553,30 +553,30 @@ void slidingWindowFeature(String line, int frequency, float margin, float lineTo
     {
       if (slidingWindowSize % 2 != 0)
       {
-        spaces = leftRightChars - j; // determine how many spaces to pad on the left
+        spacesLeft = leftRightChars - j; // determine how many spaces to pad on the left
         startIndex = 0; // start index for the substring
         endIndex = Math.min(line.length(), j + leftRightChars + 1); // Use as many characters as possible from the beginning, but do not exceed the string length
         tempGroup = line.substring(startIndex, endIndex); // create the temporary group
         for (int pos = 0; pos < tempGroup.length(); pos++)
         {
-          groupArray[spaces + pos] = tempGroup.charAt(pos); // fill the padded array: leave left "spaces" as blank and then add the substring
+          groupArray[spacesLeft + pos] = tempGroup.charAt(pos); // fill the padded array: leave left "spaces" as blank and then add the substring
         }
       }
       else
       {
-        spaces = leftRightChars - j - 1; // determine how many spaces to pad on the left
+        spacesLeft = leftRightChars - j - 1; // determine how many spaces to pad on the left
         startIndex = 0; // start index for the substring
         endIndex = Math.min(line.length(), j + leftRightChars + 1); // Use as many characters as possible from the beginning, but do not exceed the string length
         tempGroup = line.substring(startIndex, endIndex); // create the temporary group
         for (int pos = 0; pos < tempGroup.length(); pos++)
         {
-          groupArray[spaces + pos] = tempGroup.charAt(pos); // fill the padded array: leave left "spaces" as blank and then add the substring
+          groupArray[spacesLeft + pos] = tempGroup.charAt(pos); // fill the padded array: leave left "spaces" as blank and then add the substring
         }
       }
     }
     else // Normal Case: there are enough characters to the left
     {
-      spaces = 0; // reset the spaces
+      spacesLeft = 0; // reset the spaces
       
       if (slidingWindowSize % 2 != 0)
       {
@@ -596,6 +596,14 @@ void slidingWindowFeature(String line, int frequency, float margin, float lineTo
         for (int pos = 0; pos < tempGroup.length(); pos++)
         {
           groupArray[pos] = tempGroup.charAt(pos); // fill the array with the characters  
+        }
+      }
+      // calculate the number of spaces to the right (if any)
+      for (int i = 0; i < groupArray.length; i++)
+      {
+        if (groupArray[i] == ' ')
+        {
+          spacesRight += 1;
         }
       }
     }
@@ -623,7 +631,7 @@ void slidingWindowFeature(String line, int frequency, float margin, float lineTo
       {
         if (!group.equals(lastSentGroup)) // send only if this is a new group
         {
-          sendToBrailleGroup(group, "#", "+", markersString, startIndex, endIndex, spaces); // send the group to the Arduino
+          sendToBrailleGroup(group, "#", "+", markersString, startIndex, endIndex, spacesLeft, spacesRight); // send the group to the Arduino
           lastSentGroup = group; // update the last sent group
         }
       }
@@ -663,7 +671,7 @@ void wordGroupingFeature(String line, float margin, float lineTopEnd, float line
     {
       if (!word.equals(lastSentGroup))
       {
-        sendToBrailleGroup(word, "^", "|",  markersString, startIndex, endIndex, 0); // send the group to the Arduino
+        sendToBrailleGroup(word, "^", "|",  markersString, startIndex, endIndex, 0, 0); // send the group to the Arduino
         lastSentGroup = word; // update the last sent group
       }
     }
