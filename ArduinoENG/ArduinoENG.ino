@@ -35,7 +35,7 @@ void setup()
   display.begin();
   display.clear();
 
-  cli();
+  /*cli();
 
   // set timer2 (8 bits) at the interrupt frequency 1 kHz
   TCCR2A = 0; // set entire TCCR2A register to 0
@@ -51,10 +51,10 @@ void setup()
   // enable timer compare interrupt
   TIMSK2 |= (1 << OCIE2A);
 
-  sei(); // allow interrupts
+  sei();*/ // allow interrupts
 }
 
-ISR(TIMER2_COMPA_vect) // timer 2 interrupt  
+/*ISR(TIMER2_COMPA_vect) // timer 2 interrupt  
 {
   if (newWordAvailable)
   {
@@ -117,7 +117,7 @@ ISR(TIMER2_COMPA_vect) // timer 2 interrupt
           }
         }
       }
-      /*else if (language == 'K')
+      else if (language == 'K')
       {
         int wordLength = currentWord.length() / 2; // each character is represented by 2 hex digits
         if (wordLength <= CELL_COUNT)              // word is short
@@ -158,14 +158,14 @@ ISR(TIMER2_COMPA_vect) // timer 2 interrupt
             newWordAvailable = false;
           }
         }
-      }*/
+      }
     }
   }
-}
+}*/
 
 void loop()
 {
-  bool buttonStatePrev = digitalRead(10);
+  /*bool buttonStatePrev = digitalRead(10);
   bool buttonStateIdle = digitalRead(11);
   bool buttonStateNext = digitalRead(12);
   
@@ -186,7 +186,7 @@ void loop()
   }
   lastButtonStatePrev = buttonStatePrev;
   lastButtonStateIdle = buttonStateIdle;
-  lastButtonStateNext = buttonStateNext;
+  lastButtonStateNext = buttonStateNext;*/
   
   // Read serial input
   
@@ -229,6 +229,10 @@ void loop()
           //language = '\0'; // Reset the language
           //languageSet = false; // Reset the language set flag
         }
+        else if (language == 'K')
+        {
+          processBrailleGroupKOR(receivedData, incomingChar);
+        }
       }
     }
     else
@@ -269,7 +273,7 @@ void processBrailleGroupKOR(String group, char c)
   }
   if (c == '+')  // Korean sliding window
   {
-    int numberOfChars = groupLength / 2;
+    /*int numberOfChars = groupLength / 2;
     int middleCharIndex = (numberOfChars - 1) / 2;
     int startCellIndex = 3 - middleCharIndex;
 
@@ -292,6 +296,29 @@ void processBrailleGroupKOR(String group, char c)
       String hexByteStr = group.substring(hexStart, hexStart + 2);
       int decimalVal = (int) strtol(hexByteStr.c_str(), NULL, 16); // Convert hex to decimal
       display.binaryWriteCell(cellIndex, decimalVal);
+    }*/
+
+    int groupLength = group.length();         // e.g., 14
+    int numberOfChars = groupLength / 2;      // e.g., 7 characters
+    int middleCharIndex = (numberOfChars - 1) / 2;  // e.g., index 3
+    int middleCellIndex = 3;                        // fixed middle cell
+    int leftmostCellIndex = middleCellIndex - middleCharIndex;
+
+    // unified loop over all characters
+    for (int i = 0; i < numberOfChars; i++)
+    {
+      int hexStart = i * 2;
+      if (hexStart + 2 > groupLength) break;  // avoid overflow
+
+      String hexByteStr = group.substring(hexStart, hexStart + 2);
+      int decimalVal = (int) strtol(hexByteStr.c_str(), NULL, 16);
+
+      int cellIndex = leftmostCellIndex + i;
+
+      if (cellIndex >= 0 && cellIndex < CELL_COUNT)
+      {
+        display.binaryWriteCell(cellIndex, decimalVal);
+      }
     }
   }
 }

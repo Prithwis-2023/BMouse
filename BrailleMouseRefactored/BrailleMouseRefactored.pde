@@ -106,7 +106,7 @@ void sendToBrailleGroup(String group, String startMarker, String endMarker, Stri
     {
       String brailleString = 'K' + startMarker + bUnicodesString(group, markerString, startIndex, endIndex, spacesLeft, spacesRight) + endMarker;
       myPort.write(brailleString); // send the braille string to the Arduino
-      delay(50);
+      //delay(50);
       println("Sent to Arduino: " + brailleString); // Debugging output
     }
   }
