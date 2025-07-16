@@ -50,7 +50,7 @@ int charGroupingFrequency; // stores the character grouping frequency
 int slidingWindowFrequency; // stores the sliding window frequency
 String userInput = "";
 String lastSentGroup = "";
-PFont font; // initialize the font
+PFont fontEnglish, fontKorean; // initialize the font
 int lastVerticalZone = 0; // -1 for above boundary, 0 for inside and 1 for below the boundary line
 
 // Clears GUI Data
@@ -87,9 +87,9 @@ void setup()
   COLBeep = new SoundFile(this, "ChangeOfLine.mp3");
   TopandBottomBeep = new SoundFile(this, "endOfLineBeep.mp3");
   
-  String fontFileName = "MapleMono-SemiBold.otf";
-  font = createFont(fontFileName, 32);
-  textFont(font);
+  fontEnglish = createFont("MapleMono-SemiBold.otf", 32);
+  fontKorean = createFont("Noto Sans CJK KR", 32);
+  textFont(fontEnglish); // loading the English one by default
 }
 
 // function to send the group to the Arduino
@@ -244,23 +244,20 @@ void draw()
   {
     defaultLanguage = Language.English;
     DTEXT = "This is it. \n The fight of our lives and we're going to win. Bla Bla Black Sheep have you any wool.\n Whatever it takes. \n And Hello World!";
-    font = createFont("MapleMono-SemiBold.otf", 32); // setting the default English font
-    textFont(font);
+    textFont(fontEnglish);
   }
   else if (lang.equals("Korean"))
   {
     defaultLanguage = Language.Korean;
     DTEXT = decompose(korDTEXT)[0]; // decompose the Korean text
     markersString = decompose(korDTEXT)[1];
-    font = createFont("Noto Sans CJK KR", 32); // setting the default Korean font
-    textFont(font);
+    textFont(fontKorean);
   }
   else
   {
     defaultLanguage = Language.English;
     DTEXT = "This is it. \n The fight of our lives and we're going to win. Bla Bla Black Sheep have you any wool.\n Whatever it takes. \n And Hello World!";
-    font = createFont("MapleMono-SemiBold.otf", 32);
-    textFont(font);
+    textFont(fontEnglish);
   }
 
   // GUI for the Display Mode
