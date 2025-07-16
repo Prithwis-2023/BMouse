@@ -14,7 +14,6 @@ String currentWord = "";
 bool newGroupReceived = false;
 bool newWordAvailable = false;
 char language = '\0'; // 'E' for English, 'K' for Korean, etc.
-//bool languageSet = false;
 int scrollIndex = 0;
 int scrollTimer = 0;
 
@@ -24,6 +23,11 @@ char alphabets[10] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'};
 bool lastButtonStatePrev = HIGH;
 bool lastButtonStateIdle = HIGH;
 bool lastButtonStateNext = HIGH;
+
+unsigned long lastDebounceTimePrev = 0;
+unsigned long lastDebounceTimeIdle = 0;
+unsigned long lastDebounceTimeNext = 0;
+const unsigned long debounceDelay = 50;
 
 void setup()
 {
@@ -165,28 +169,36 @@ void setup()
 
 void loop()
 {
-  /*bool buttonStatePrev = digitalRead(10);
+  /*unsigned long currentTime = millis();
+
+  bool buttonStatePrev = digitalRead(10);
   bool buttonStateIdle = digitalRead(11);
   bool buttonStateNext = digitalRead(12);
   
-  if (lastButtonStatePrev == HIGH && buttonStatePrev == LOW)
+  // PREV button
+  if (buttonStatePrev == LOW && lastButtonStatePrev == HIGH && (currentTime - lastDebounceTimePrev > debounceDelay))
   {
     Serial.println("PREV");
-    delay(200); // debounce delay
-  }
-  else if (lastButtonStateIdle == HIGH && buttonStateIdle == LOW)
-  {
-    Serial.println("IDLE");
-    delay(200); // debounce delay
-  }
-  else if (lastButtonStateNext == HIGH && buttonStateNext == LOW)
-  {
-    Serial.println("NEXT");
-    delay(200); // debounce delay
+    lastDebounceTimePrev = currentTime;
   }
   lastButtonStatePrev = buttonStatePrev;
+
+  // IDLE button
+  if (buttonStateIdle == LOW && lastButtonStateIdle == HIGH && (currentTime - lastDebounceTimeIdle > debounceDelay))
+  {
+    Serial.println("IDLE");
+    lastDebounceTimeIdle = currentTime;
+  }
   lastButtonStateIdle = buttonStateIdle;
+
+  // NEXT button
+  if (buttonStateNext == LOW && lastButtonStateNext == HIGH && (currentTime - lastDebounceTimeNext > debounceDelay))
+  {
+    Serial.println("NEXT");
+    lastDebounceTimeNext = currentTime;
+  }
   lastButtonStateNext = buttonStateNext;*/
+
   
   // Read serial input
   
@@ -197,7 +209,6 @@ void loop()
     if (incomingChar == 'K' || incomingChar == 'E')
     {
       language = incomingChar; // Set the language
-      //languageSet = true; // Mark that the language has been set
       continue; // Skip further processing for this character
     }         
 
@@ -221,17 +232,17 @@ void loop()
       }
       else                      // for the rest of the features
       {
-        //newWordAvailable = false;
+        newWordAvailable = false;
         if (language == 'E')
         {
           processBrailleGroupENG(receivedData, incomingChar);
-          // reset the language stuff for the next group
-          //language = '\0'; // Reset the language
-          //languageSet = false; // Reset the language set flag
+          language = '\0'; 
+          
         }
         else if (language == 'K')
         {
           processBrailleGroupKOR(receivedData, incomingChar);
+          language = '\0';
         }
       }
     }
