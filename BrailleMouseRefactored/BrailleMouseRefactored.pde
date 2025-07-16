@@ -89,7 +89,6 @@ void setup()
   
   fontEnglish = createFont("MapleMono-SemiBold.otf", 32);
   fontKorean = createFont("Noto Sans CJK KR", 32);
-  textFont(fontEnglish); // loading the English one by default
 }
 
 // function to send the group to the Arduino

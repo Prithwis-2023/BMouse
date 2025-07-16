@@ -14,7 +14,7 @@ String currentWord = "";
 bool newGroupReceived = false;
 bool newWordAvailable = false;
 char language = '\0'; // 'E' for English, 'K' for Korean, etc.
-bool languageSet = false;
+//bool languageSet = false;
 int scrollIndex = 0;
 int scrollTimer = 0;
 
@@ -117,7 +117,7 @@ ISR(TIMER2_COMPA_vect) // timer 2 interrupt
           }
         }
       }
-      else if (language == 'K')
+      /*else if (language == 'K')
       {
         int wordLength = currentWord.length() / 2; // each character is represented by 2 hex digits
         if (wordLength <= CELL_COUNT)              // word is short
@@ -158,7 +158,7 @@ ISR(TIMER2_COMPA_vect) // timer 2 interrupt
             newWordAvailable = false;
           }
         }
-      }
+      }*/
     }
   }
 }
@@ -194,20 +194,17 @@ void loop()
   {
     char incomingChar = Serial.read();
 
-    if (incomingChar == 'E' || incomingChar == 'K')
+    if (incomingChar == 'K' || incomingChar == 'E')
     {
       language = incomingChar; // Set the language
-      languageSet = true; // Mark that the language has been set
+      //languageSet = true; // Mark that the language has been set
       continue; // Skip further processing for this character
-    }
+    }         
 
-    if (incomingChar == '*' || incomingChar == '#' || incomingChar == '^') // start markers for different features
+    else if (incomingChar == '*' || incomingChar == '#' || incomingChar == '^') // start markers for different features
     {
-      if (languageSet)
-      {
-        newGroupReceived = true;
-        receivedData = ""; // Clear when new group starts
-      }
+      newGroupReceived = true;
+      receivedData = ""; // Clear when new group starts
     }
     else if (incomingChar == '@' || incomingChar == '+' || incomingChar == '|') // end markers for different features
     {
@@ -224,10 +221,14 @@ void loop()
       }
       else                      // for the rest of the features
       {
-        processBrailleGroup(receivedData, incomingChar);
-        // reset the language stuff for the next group
-        language = '\0'; // Reset the language
-        languageSet = false; // Reset the language set flag
+        //newWordAvailable = false;
+        if (language == 'E')
+        {
+          processBrailleGroupENG(receivedData, incomingChar);
+          // reset the language stuff for the next group
+          //language = '\0'; // Reset the language
+          //languageSet = false; // Reset the language set flag
+        }
       }
     }
     else
@@ -250,15 +251,14 @@ char isNumericandReplace(char c)
   return '\0';
 }
 
-
-void processBrailleGroup(String group, char c)
+void processBrailleGroupKOR(String group, char c)
 {
   int groupLength = group.length(); 
   if (language == '\0') // If language is not set, do nothing
   {
     return;
   }
-  else if (c == '@' && language == 'K') // Korean character grouping
+  if (c == '@') // Korean character grouping
   {
     for (int i = 0; i < groupLength - 1; i += 2)
     {
@@ -267,23 +267,23 @@ void processBrailleGroup(String group, char c)
       display.binaryWriteCell(i / 2, decimalVal);
     }
   }
-  else if (c == '+' && language == 'K') // Korean sliding window
+  if (c == '+')  // Korean sliding window
   {
     int numberOfChars = groupLength / 2;
     int middleCharIndex = (numberOfChars - 1) / 2;
+    int startCellIndex = 3 - middleCharIndex;
 
-    int leftCellStart = 3 - middleCharIndex;
     for (int i = 0; i < middleCharIndex; i++)
     {
-      int cellIndex = leftCellStart + i;
       int hexStart = i * 2;
       String hexByteStr = group.substring(hexStart, hexStart + 2);
-      int decimalVal = (int) strtol(hexByteStr.c_str(), NULL, 16); // Convert hex to decimal
-      display.binaryWriteCell(cellIndex, decimalVal);
+      int decVal = (int) strtol(hexByteStr.c_str(), NULL, 16);
+      display.binaryWriteCell(startCellIndex + i, decVal);
     }
-    String middleCharHexByteStr = group.substring(middleCharIndex * 2, middleCharIndex * 2 + 2);
-    int middleCharDecimalVal = (int) strtol(middleCharHexByteStr.c_str(), NULL, 16);
-    display.binaryWriteCell(3, middleCharDecimalVal);
+
+    String middleHexByteStr = group.substring(middleCharIndex * 2, middleCharIndex * 2 + 2);
+    int middleDecVal = (int) strtol(middleHexByteStr.c_str(), NULL, 16);
+    display.binaryWriteCell(3, middleDecVal);
 
     for (int i = middleCharIndex + 1; i < numberOfChars; i++)
     {
@@ -292,10 +292,19 @@ void processBrailleGroup(String group, char c)
       String hexByteStr = group.substring(hexStart, hexStart + 2);
       int decimalVal = (int) strtol(hexByteStr.c_str(), NULL, 16); // Convert hex to decimal
       display.binaryWriteCell(cellIndex, decimalVal);
-    }                                                                                
+    }
   }
+}
 
-  else if (c == '@' && language == 'E') // English character grouping
+void processBrailleGroupENG(String group, char c)
+{
+  int groupLength = group.length(); 
+  if (language == '\0') // If language is not set, do nothing
+  {
+    return;
+  }
+  
+  if (c == '@') // English character grouping
   {
     for (int i = 0; i < groupLength; i++)
     {
@@ -312,7 +321,7 @@ void processBrailleGroup(String group, char c)
       }
     }
   }
-  else if (c == '+' && language == 'E') // English sliding window
+  if (c == '+') // English sliding window
   {
     int middleIndex = (groupLength - 1) / 2;
 

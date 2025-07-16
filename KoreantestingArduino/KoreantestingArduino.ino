@@ -28,49 +28,17 @@ bool lastButtonStateNext = HIGH;
 void setup()
 {
   Serial.begin(9600);
+  display.begin();
+  display.clear();
+  language = 'K';
   String group = "2303202A0309";
-  int groupLength = group.length();
-  int numberOfChars = groupLength / 2;
-  Serial.println(numberOfChars);
-  int middleCharIndex = (numberOfChars - 1) / 2;
-  Serial.print("Left: ");
-  int leftCellStart = 3 - middleCharIndex;
-  for (int i = 0; i < middleCharIndex; i++)
-  {
-    int cellIndex = leftCellStart + i;
-    if (cellIndex >= 0 && cellIndex < CELL_COUNT) // checking if inbound
-    {
-      int hexStart = i * 2;
-      String hexByteStr = group.substring(hexStart, hexStart + 2);
-      int decimalVal = (int) strtol(hexByteStr.c_str(), NULL, 16); // Convert hex to decimal
-      display.binaryWriteCell(cellIndex, decimalVal);
-      Serial.print(hexStart);
-    }
-    
-  }
-  Serial.println();
-  Serial.print("Middle: ");
-  Serial.println(middleCharIndex * 2);
-  String middleCharHexByteStr = group.substring(middleCharIndex * 2, middleCharIndex * 2 + 2);
-  int middleCharDecimalVal = (int) strtol(middleCharHexByteStr.c_str(), NULL, 16);
-  display.binaryWriteCell(3, middleCharDecimalVal);
-
-  Serial.print("Right: ");
-  for (int i = middleCharIndex + 1; i < numberOfChars; i++)
-  {
-    int cellIndex = 3 + (i - middleCharIndex);
-    if (cellIndex >= 0 && cellIndex < CELL_COUNT)
-    {
-      int hexStart = i * 2;
-      String hexByteStr = group.substring(hexStart, hexStart + 2);
-      int decimalVal = (int) strtol(hexByteStr.c_str(), NULL, 16); // Convert hex to decimal
-      display.binaryWriteCell(cellIndex, decimalVal);
-      Serial.print(hexStart);
-    }
-  }                                                                                                       
+  processBrailleGroup(group, '@', language);                                                                     
 }
 
-void loop(){}
+void loop()
+{
+  
+}
 
 
 char isNumericandReplace(char c)
@@ -127,83 +95,20 @@ void slidingKor(String group, char c, char language)
   }
 }
 
-void processBrailleGroup(String group, char c)
+void processBrailleGroup(String group, char c, char language)
 {
   int groupLength = group.length(); 
   if (language == '\0') // If language is not set, do nothing
   {
     return;
   }
-  else if (language == 'K') // Korean
+  else if (c == '@' && language == 'K') // Korean character grouping
   {
-    if (c == '@') // end marker for character grouping feature
+    for (int i = 0; i < groupLength - 1; i += 2)
     {
-      for (int i = 0; i < groupLength - 1; i += 2)
-      {
-        String hexByteStr = group.substring(i, i + 2);
-        int decimalVal = (int) strtol(hexByteStr.c_str(), NULL, 16); // Convert hex to decimal
-        display.binaryWriteCell(i / 2, decimalVal);
-      }
-    }
-  }
-  else if (language == 'E') // English
-  {
-    if (c == '@') // end marker for character grouping feature
-    {
-      for (int i = 0; i < groupLength; i++)
-      {
-        if (i < CELL_COUNT) 
-        {
-          if (isNumericandReplace(group[i]) != '\0')
-          {
-            display.writeCell(isNumericandReplace(group[i]), i);
-          }
-          else
-          {
-            display.writeCell(group[i], i);
-          }
-        }
-      }
-    }
-    else if (c == '+') // end marker for sliding window feature
-    {
-      int middleIndex = (groupLength - 1) / 2;
-
-      // Left side: Assign decreasing indices before 3
-      int leftCellIndex = 3 - (middleIndex);
-      
-      for (int i = 0; i < middleIndex; i++) 
-      {
-        if (isNumericandReplace(group[i]) != '\0')
-        {
-          display.writeCell(isNumericandReplace(group[i]), leftCellIndex + i);
-        }
-        else
-        {
-          display.writeCell(group[i], leftCellIndex + i);
-        }
-      }
-      // Middle character at index 3
-      if (isNumericandReplace(group[middleIndex]) != '\0')
-      {
-        display.writeCell(isNumericandReplace(group[middleIndex]), 3);
-      }
-      else
-      {
-        display.writeCell(group[middleIndex], 3);
-      }
-      // Right side: Start from index 4 and continue
-      for (int i = middleIndex + 1; i < groupLength; i++) 
-      {
-        if (isNumericandReplace(group[i]) != '\0')
-        {
-          display.writeCell(isNumericandReplace(group[i]), 3 + (i - middleIndex));
-        }
-        else 
-        {
-          display.writeCell(group[i], 3 + (i - middleIndex));
-        }
-      }
+      String hexByteStr = group.substring(i, i + 2);
+      int decimalVal = (int) strtol(hexByteStr.c_str(), NULL, 16); // Convert hex to decimal
+      display.binaryWriteCell(i / 2, decimalVal);
     }
   }
 }
