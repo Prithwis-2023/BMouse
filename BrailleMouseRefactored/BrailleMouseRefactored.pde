@@ -438,13 +438,13 @@ void serialEvent(Serial myPort)
     {
       textIndex = (textIndex + 1) % lines.length;
       //DTEXT = lines[textIndex]; // update the text to the next sample text
-      println("Switched to next line: " + DTEXT);
+      //println("Switched to next line: " + DTEXT);
     }
     else if (inString.equals("PREV"))
     {
       textIndex = (textIndex - 1 + lines.length) % lines.length; // wrap around to the last line if we go below 0
       //DTEXT = lines[textIndex]; // update the text to the previous sample text
-      println("Switched to previous line: " + DTEXT);
+      //println("Switched to previous line: " + DTEXT);
     }
     else if (inString.equals("IDLE"))
     {

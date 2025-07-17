@@ -22,11 +22,16 @@ bool lastButtonStatePrev = HIGH;
 bool lastButtonStateIdle = HIGH;
 bool lastButtonStateNext = HIGH;
 
+unsigned long lastDebounceTimePrev = 0;
+unsigned long lastDebounceTimeIdle = 0;
+unsigned long lastDebounceTimeNext = 0;
+const unsigned long debounceDelay = 50;
+
 void setup()
 {
   pinMode(10, INPUT_PULLUP); // the previous button
   pinMode(11, INPUT_PULLUP); // idle button (TBD)
-  pinMode(12, INPUT_PULLUP); // next button*/
+  pinMode(12, INPUT_PULLUP); // next button
 
   Serial.begin(9600);
   display.begin();
@@ -53,7 +58,7 @@ void setup()
 
 ISR(TIMER2_COMPA_vect) // timer 2 interrupt  
 {
-  /*if (newWordAvailable)
+  if (newWordAvailable)
   {
     scrollTimer++;
 
@@ -64,11 +69,12 @@ ISR(TIMER2_COMPA_vect) // timer 2 interrupt
       int wordLength = currentWord.length() / 2; // each character is represented by 2 hex digits
       if (wordLength <= CELL_COUNT)              // word is short
       {
-        for (int i = 0; i < currentWord.length() - 1; i+= 2)
+        for (int i = 0; i < wordLength; i++)
         {
-          String hexByteStr = currentWord.substring(i, i + 2);
+          int hexStart = i * 2; 
+          String hexByteStr = currentWord.substring(hexStart, hexStart + 2);
           int decimalVal = (int) strtol(hexByteStr.c_str(), NULL, 16); // Convert hex to decimal
-          display.binaryWriteCell(i/2, decimalVal);
+          display.binaryWriteCell(i, decimalVal);
         }
         newWordAvailable = false; // done and no scrolling needed
       }
@@ -101,87 +107,70 @@ ISR(TIMER2_COMPA_vect) // timer 2 interrupt
         }
       }
     }
-  }*/
+  }
 }
 
 void loop()
 {
-  bool buttonStatePrev = digitalRead(10);
-  bool buttonStateIdle = digitalRead(11);
-  bool buttonStateNext = digitalRead(12);
-  
-  if (lastButtonStatePrev == HIGH && buttonStatePrev == LOW)
-  {
-    Serial.println("PREV");
-    delay(200); // debounce delay
-  }
-  else if (lastButtonStateIdle == HIGH && buttonStateIdle == LOW)
-  {
-    Serial.println("IDLE");
-    delay(200); // debounce delay
-  }
-  else if (lastButtonStateNext == HIGH && buttonStateNext == LOW)
-  {
-    Serial.println("NEXT");
-    delay(200); // debounce delay
-  }
-  lastButtonStatePrev = buttonStatePrev;
-  lastButtonStateIdle = buttonStateIdle;
-  lastButtonStateNext = buttonStateNext;
-
-  // Read serial input
   while (Serial.available() > 0)
   {
-    char incomingChar = Serial.read();
+    serialRead(); // Read serial input
+  }
+  checkButtons(); // the function for the button mode
+}
 
-    if (incomingChar == 'K' || incomingChar == 'E')
+void serialRead()
+{
+  char incomingChar = Serial.read();
+  if (incomingChar == 'K')
+  {
+    language = incomingChar;
+    languageSet = true;
+  }
+  else if (incomingChar == '*' || incomingChar == '#' || incomingChar == '^') // start markers
+  {
+    newGroupReceived = true;
+    receivedData = ""; // resetting this everytime we receive a new group
+  }
+  else if (incomingChar == '@' || incomingChar == '+' || incomingChar == '|') // end markers
+  {
+    if (newGroupReceived && languageSet)
     {
-      language = incomingChar; // Set the language
-      //languageSet = true; // Mark that the language has been set
-      continue; // Skip further processing for this character
-    }         
-
-    if (incomingChar == '*' || incomingChar == '#' || incomingChar == '^') // start markers for different features
-    {
-      newGroupReceived = true;
-      receivedData = ""; // Clear when new group starts
-    }
-    else if (incomingChar == '@' || incomingChar == '+' || incomingChar == '|') // end markers for different features
-    {
-      if (newGroupReceived)
-      {
-        display.clear();
-        newGroupReceived = false;
-      }
-      if (incomingChar == '|')  // end marker for word grouping feature
+      display.clear();
+      if (incomingChar == '|')
       {
         currentWord = receivedData;
-        scrollIndex = 0; // start from the beginning
+        scrollIndex = 0;
         newWordAvailable = true;
+
+        language = '\0';
+        languageSet = false;
       }
-      else                     // for the rest of the features
+      else
       {
-        processBrailleGroupKOR(receivedData, incomingChar);
-        // reset the language stuff for the next group
-        language = '\0'; // Reset the language
-        //languageSet = false; // Reset the language set flag
+        processBrailleGroup(receivedData, incomingChar, language);
+        //newWordAvailable = false;
       }
+
+      language = '\0';
+      languageSet = false;
+      newGroupReceived = false;
     }
-    else
-    {
-      receivedData += incomingChar;
-    }
+  }
+  else
+  {
+    receivedData += incomingChar;
   }
 }
 
-void processBrailleGroupKOR(String group, char c)
+void processBrailleGroup(String group, char c, char language)
 {
   int groupLength = group.length(); 
   if (language == '\0') // If language is not set, do nothing
   {
     return;
   }
-  if (c == '@') // Korean character grouping
+  if (language == 'K' && c == '@') // Korean character grouping
   {
     for (int i = 0; i < groupLength - 1; i += 2)
     {
@@ -190,31 +179,61 @@ void processBrailleGroupKOR(String group, char c)
       display.binaryWriteCell(i / 2, decimalVal);
     }
   }
-  if (c == '+')  // Korean sliding window
+  if (language == 'K' && c == '+')  // Korean sliding window
   {
-    int numberOfChars = groupLength / 2;
-    int middleCharIndex = (numberOfChars - 1) / 2;
-    int startCellIndex = 3 - middleCharIndex;
+    int groupLength = group.length();         // e.g., 14
+    int numberOfChars = groupLength / 2;      // e.g., 7 characters
+    int middleCharIndex = (numberOfChars - 1) / 2;  // e.g., index 3
+    int middleCellIndex = 3;                        // fixed middle cell
+    int leftmostCellIndex = middleCellIndex - middleCharIndex;
 
-    for (int i = 0; i < middleCharIndex; i++)
+    for (int i = 0; i < numberOfChars; i++)
     {
       int hexStart = i * 2;
-      String hexByteStr = group.substring(hexStart, hexStart + 2);
-      int decVal = (int) strtol(hexByteStr.c_str(), NULL, 16);
-      display.binaryWriteCell(startCellIndex + i, decVal);
-    }
+      if (hexStart + 2 > groupLength) break;  // avoid overflow
 
-    String middleHexByteStr = group.substring(middleCharIndex * 2, middleCharIndex * 2 + 2);
-    int middleDecVal = (int) strtol(middleHexByteStr.c_str(), NULL, 16);
-    display.binaryWriteCell(3, middleDecVal);
-
-    for (int i = middleCharIndex + 1; i < numberOfChars; i++)
-    {
-      int cellIndex = 3 + (i - middleCharIndex);
-      int hexStart = i * 2;
       String hexByteStr = group.substring(hexStart, hexStart + 2);
-      int decimalVal = (int) strtol(hexByteStr.c_str(), NULL, 16); // Convert hex to decimal
-      display.binaryWriteCell(cellIndex, decimalVal);
+      int decimalVal = (int) strtol(hexByteStr.c_str(), NULL, 16);
+
+      int cellIndex = leftmostCellIndex + i;
+
+      if (cellIndex >= 0 && cellIndex < CELL_COUNT)
+      {
+        display.binaryWriteCell(cellIndex, decimalVal);
+      }
     }
   }
+}
+
+void checkButtons()
+{
+  unsigned long currentTime = millis();
+
+  bool buttonStatePrev = digitalRead(10);
+  bool buttonStateIdle = digitalRead(11);
+  bool buttonStateNext = digitalRead(12);
+  
+  // PREV button
+  if (buttonStatePrev == LOW && lastButtonStatePrev == HIGH && (currentTime - lastDebounceTimePrev > debounceDelay))
+  {
+    //Serial.println("PREV");
+    lastDebounceTimePrev = currentTime;
+  }
+  lastButtonStatePrev = buttonStatePrev;
+
+  // IDLE button
+  if (buttonStateIdle == LOW && lastButtonStateIdle == HIGH && (currentTime - lastDebounceTimeIdle > debounceDelay))
+  {
+    //Serial.println("IDLE");
+    lastDebounceTimeIdle = currentTime;
+  }
+  lastButtonStateIdle = buttonStateIdle;
+
+  // NEXT button
+  if (buttonStateNext == LOW && lastButtonStateNext == HIGH && (currentTime - lastDebounceTimeNext > debounceDelay))
+  {
+    //Serial.println("NEXT");
+    lastDebounceTimeNext = currentTime;
+  }
+  lastButtonStateNext = buttonStateNext;
 }
