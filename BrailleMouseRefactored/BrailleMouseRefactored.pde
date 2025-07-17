@@ -7,8 +7,8 @@ import processing.sound.*;
 enum Language {English, Korean}; 
 enum Feature {charGrouping, wordGrouping, slidingWindow}; 
 enum textDisplayMode {buttonMode, normalMode}; // create an enum for the text display modes
-Language defaultLanguage = Language.English; // default language
-Feature defaultFeature = Feature.charGrouping; // default feature
+Language defaultLanguage = Language.Korean; // default language
+Feature defaultFeature = Feature.wordGrouping; // default feature
 textDisplayMode defaultDisplayMode = textDisplayMode.normalMode; // default text display mode
 
 // constants
@@ -433,7 +433,7 @@ void serialEvent(Serial myPort)
   if (inString != null) 
   {
     inString = trim(inString); // trim the string to remove any leading or trailing whitespace
-    println("Received the line: " + inString); // Debugging log
+    println(inString); // Debugging log
     if (inString.equals("NEXT"))
     {
       textIndex = (textIndex + 1) % lines.length;

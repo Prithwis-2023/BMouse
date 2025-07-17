@@ -9,7 +9,8 @@
 #define DOUT_PIN 2
 
 BrailleDisplay display(CELL_COUNT, ON_PIN, DIN_PIN, LATCH_PIN, CLK_PIN, DOUT_PIN);
-String receivedData = "";
+//String receivedData = "";
+char receivedData[30] = {'\0'};
 String currentWord = "";
 bool newGroupReceived = false;
 bool newWordAvailable = false;
@@ -60,6 +61,10 @@ ISR(TIMER2_COMPA_vect) // timer 2 interrupt
 {
   if (newWordAvailable)
   {
+    // //DEBUG
+    // Serial.print("INTERRUPTED> ");
+    // Serial.println(receivedData);
+
     scrollTimer++;
 
     if (scrollTimer >= 500)
@@ -114,63 +119,69 @@ void loop()
 {
   while (Serial.available() > 0)
   {
-    serialRead(); // Read serial input
+    serialRead();
   }
-  checkButtons(); // the function for the button mode
+  checkButtons();
 }
 
+// reading the serial input and setting the variables
 void serialRead()
 {
   char incomingChar = Serial.read();
+
+  // //DEBUG
+  // strncat(receivedData, &incomingChar, sizeof(incomingChar));
+  // Serial.println(receivedData);
+
   if (incomingChar == 'K')
   {
     language = incomingChar;
     languageSet = true;
   }
-  else if (incomingChar == '*' || incomingChar == '#' || incomingChar == '^') // start markers
+  if (incomingChar == '*' || incomingChar == '#' || incomingChar == '^')
   {
     newGroupReceived = true;
-    receivedData = ""; // resetting this everytime we receive a new group
+    //receivedData = "";
+    receivedData[0]={'\0'};
   }
-  else if (incomingChar == '@' || incomingChar == '+' || incomingChar == '|') // end markers
+  else if (incomingChar == '@' || incomingChar == '+' || incomingChar == '|')
   {
+
     if (newGroupReceived && languageSet)
     {
       display.clear();
-      if (incomingChar == '|')
-      {
-        currentWord = receivedData;
-        scrollIndex = 0;
-        newWordAvailable = true;
-
-        language = '\0';
-        languageSet = false;
-      }
-      else
-      {
-        processBrailleGroup(receivedData, incomingChar, language);
-        //newWordAvailable = false;
-      }
-
-      language = '\0';
-      languageSet = false;
       newGroupReceived = false;
     }
+    if (incomingChar == '|')  // end marker for word grouping feature
+    {
+      // Serial.println("Received Korean Word Group:");
+      // Serial.println(receivedData);
+      // Serial.print("Length: "); Serial.println(strlen(receivedData[0]));
+      currentWord = receivedData;
+      scrollIndex = 0; // start from the beginning
+      newWordAvailable = true;
+    }
+    else
+    {
+      processBrailleGroup(receivedData, incomingChar, language);
+    }
+
+    language = '\0';
+    languageSet = false;
   }
   else
   {
-    receivedData += incomingChar;
+    //receivedData += incomingChar;
+    strncat(receivedData, &incomingChar, sizeof(incomingChar));
   }
 }
 
-void processBrailleGroup(String group, char c, char language)
+// process the data and display on the cells
+void processBrailleGroup(String group, char c, char lang)
 {
   int groupLength = group.length(); 
-  if (language == '\0') // If language is not set, do nothing
-  {
-    return;
-  }
-  if (language == 'K' && c == '@') // Korean character grouping
+
+  if (lang == 'K' && c == '@') // Korean character grouping
   {
     for (int i = 0; i < groupLength - 1; i += 2)
     {
@@ -179,7 +190,7 @@ void processBrailleGroup(String group, char c, char language)
       display.binaryWriteCell(i / 2, decimalVal);
     }
   }
-  if (language == 'K' && c == '+')  // Korean sliding window
+  if (lang == 'K' && c == '+')  // Korean sliding window
   {
     int groupLength = group.length();         // e.g., 14
     int numberOfChars = groupLength / 2;      // e.g., 7 characters
@@ -205,6 +216,7 @@ void processBrailleGroup(String group, char c, char language)
   }
 }
 
+// function for the button mode
 void checkButtons()
 {
   unsigned long currentTime = millis();
