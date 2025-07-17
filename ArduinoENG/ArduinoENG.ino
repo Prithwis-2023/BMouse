@@ -59,7 +59,8 @@ void setup()
   sei(); // allow interrupts
 }
 
-ISR(TIMER2_COMPA_vect) // timer 2 interrupt  
+// Timer 2 Interrupt
+ISR(TIMER2_COMPA_vect) 
 {
   if (newWordAvailable)
   {
@@ -125,50 +126,57 @@ ISR(TIMER2_COMPA_vect) // timer 2 interrupt
 
 void loop()
 {
-  // Read serial input
-  
   while (Serial.available() > 0)
   {
-    char incomingChar = Serial.read();
-
-    if (incomingChar == 'E')
-    {
-      language = incomingChar;
-      languageSet = true;
-    }
-    if (incomingChar == '*' || incomingChar == '#' || incomingChar == '^')
-    {
-      newGroupReceived = true;
-      receivedData = ""; // Clear when new group starts
-    }
-    else if (incomingChar == '@' || incomingChar == '+' || incomingChar == '|')
-    {
-      if (newGroupReceived)
-      {
-        display.clear();
-        newGroupReceived = false;
-      }
-      if (incomingChar == '|')  // end marker for word grouping feature
-      {
-        currentWord = receivedData;
-        scrollIndex = 0; // start from the beginning
-        newWordAvailable = true;
-      }
-      else
-      {
-        processBrailleGroup(receivedData, incomingChar);
-      }
-    }
-    else
-    {
-      receivedData += incomingChar;
-    }
+    serialRead(); 
   }
 
   checkButtons();
 }
 
+// reading the serial input and setting the variables
+void serialRead()
+{
+  char incomingChar = Serial.read();
 
+  if (incomingChar == 'E')
+  {
+    language = incomingChar;
+    languageSet = true;
+  }
+  if (incomingChar == '*' || incomingChar == '#' || incomingChar == '^')
+  {
+    newGroupReceived = true;
+    receivedData = "";
+  }
+  else if (incomingChar == '@' || incomingChar == '+' || incomingChar == '|')
+  {
+    if (newGroupReceived && languageSet)
+    {
+      display.clear();
+      newGroupReceived = false;
+    }
+    if (incomingChar == '|')  // end marker for word grouping feature
+    {
+      currentWord = receivedData;
+      scrollIndex = 0; // start from the beginning
+      newWordAvailable = true;
+    }
+    else
+    {
+      processBrailleGroup(receivedData, incomingChar, language);
+    }
+
+    language = '\0';
+    languageSet = false;
+  }
+  else
+  {
+    receivedData += incomingChar;
+  }
+}
+
+// auxillary function for detecting numeric data
 char isNumericandReplace(char c)
 {
   for (int i = 0; i < 10; i++)
@@ -182,11 +190,12 @@ char isNumericandReplace(char c)
   return '\0';
 }
 
-void processBrailleGroup(String group, char c)
+// process the data and display on the cells
+void processBrailleGroup(String group, char c, char lang)
 {
   int groupLength = group.length(); 
 
-  if (c == '@') // end marker for character grouping feature
+  if (lang == 'E' && c == '@') // end marker for character grouping feature
   {
     for (int i = 0; i < groupLength; i++)
     {
@@ -203,7 +212,7 @@ void processBrailleGroup(String group, char c)
       }
     }
   }
-  else if (c == '+') // end marker for sliding window feature
+  else if (lang == 'E' && c == '+') // end marker for sliding window feature
   {
     int middleIndex = (groupLength - 1) / 2;
 
@@ -245,6 +254,7 @@ void processBrailleGroup(String group, char c)
   }
 }
 
+// function for the button mode
 void checkButtons()
 {
   unsigned long currentTime = millis();
@@ -256,7 +266,7 @@ void checkButtons()
   // PREV button
   if (buttonStatePrev == LOW && lastButtonStatePrev == HIGH && (currentTime - lastDebounceTimePrev > debounceDelay))
   {
-    //Serial.println("PREV");
+    Serial.println("PREV");
     lastDebounceTimePrev = currentTime;
   }
   lastButtonStatePrev = buttonStatePrev;
@@ -264,7 +274,7 @@ void checkButtons()
   // IDLE button
   if (buttonStateIdle == LOW && lastButtonStateIdle == HIGH && (currentTime - lastDebounceTimeIdle > debounceDelay))
   {
-    //Serial.println("IDLE");
+    Serial.println("IDLE");
     lastDebounceTimeIdle = currentTime;
   }
   lastButtonStateIdle = buttonStateIdle;
@@ -272,7 +282,7 @@ void checkButtons()
   // NEXT button
   if (buttonStateNext == LOW && lastButtonStateNext == HIGH && (currentTime - lastDebounceTimeNext > debounceDelay))
   {
-    //Serial.println("NEXT");
+     Serial.println("NEXT");
     lastDebounceTimeNext = currentTime;
   }
   lastButtonStateNext = buttonStateNext;
