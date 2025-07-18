@@ -1,4 +1,4 @@
-#include <BrailleDisplay.h>
+//#include <BrailleDisplay.h>
 #include <Arduino.h>
 
 #define CELL_COUNT 8
@@ -8,9 +8,10 @@
 #define CLK_PIN 5
 #define DOUT_PIN 2
 
-BrailleDisplay display(CELL_COUNT, ON_PIN, DIN_PIN, LATCH_PIN, CLK_PIN, DOUT_PIN);
-//String receivedData = "";
-char receivedData[30] = {'\0'};
+//BrailleDisplay display(CELL_COUNT, ON_PIN, DIN_PIN, LATCH_PIN, CLK_PIN, DOUT_PIN);
+uint8_t* cells = new uint8_t[CELL_COUNT];
+String receivedData = "";
+//char receivedData[30] = {'\0'};
 String currentWord = "";
 bool newGroupReceived = false;
 bool newWordAvailable = false;
@@ -28,15 +29,58 @@ unsigned long lastDebounceTimeIdle = 0;
 unsigned long lastDebounceTimeNext = 0;
 const unsigned long debounceDelay = 50;
 
+// required functions from the library
+void begin()
+{
+    Serial.begin(9600);
+    pinMode(ON_PIN, OUTPUT);
+    pinMode(DIN_PIN, OUTPUT);
+    pinMode(LATCH_PIN, OUTPUT);
+    pinMode(CLK_PIN, OUTPUT);
+    clear();
+}
+
+void clear()
+{
+    for (int8_t i = CELL_COUNT; i > 0; i--)
+    {
+        binaryWriteCell(i, 0x00);
+    }
+}
+
+void binaryWriteCell(uint8_t position, byte byteVal)
+{
+    byte sortedByte;
+
+    bitWrite(sortedByte, 7, bitRead(byteVal, 6));
+    bitWrite(sortedByte, 6, bitRead(byteVal, 7));
+    bitWrite(sortedByte, 5, bitRead(byteVal, 2));
+    bitWrite(sortedByte, 4, bitRead(byteVal, 1));
+    bitWrite(sortedByte, 3, bitRead(byteVal, 0));
+    bitWrite(sortedByte, 2, bitRead(byteVal, 5));
+    bitWrite(sortedByte, 1, bitRead(byteVal, 4));
+    bitWrite(sortedByte, 0, bitRead(byteVal, 3));
+
+    sortedByte = ~sortedByte;
+
+    cells[CELL_COUNT - position - 1] = sortedByte;
+
+    digitalWrite(LATCH_PIN, LOW);
+    for (int i = CELL_COUNT - 1; i >= 0; i--)
+    {
+      shiftOut(DIN_PIN, CLK_PIN, MSBFIRST, cells[i]);
+    }
+    digitalWrite(LATCH_PIN, HIGH);
+}
+
 void setup()
 {
   pinMode(10, INPUT_PULLUP); // the previous button
   pinMode(11, INPUT_PULLUP); // idle button (TBD)
   pinMode(12, INPUT_PULLUP); // next button
 
-  Serial.begin(9600);
-  display.begin();
-  display.clear();
+  begin();
+  clear();
 
   cli();
   
@@ -79,13 +123,13 @@ ISR(TIMER2_COMPA_vect) // timer 2 interrupt
           int hexStart = i * 2; 
           String hexByteStr = currentWord.substring(hexStart, hexStart + 2);
           int decimalVal = (int) strtol(hexByteStr.c_str(), NULL, 16); // Convert hex to decimal
-          display.binaryWriteCell(i, decimalVal);
+          binaryWriteCell(i, decimalVal);
         }
         newWordAvailable = false; // done and no scrolling needed
       }
       else
       {
-        display.clear(); // clear once per frame
+        clear(); // clear once per frame
 
         // scroll the word
         for (int i = 0; i < CELL_COUNT; i++)
@@ -95,11 +139,11 @@ ISR(TIMER2_COMPA_vect) // timer 2 interrupt
           {
             String hexByteStr = currentWord.substring(charIndex * 2, charIndex * 2 + 2);
             int decimalVal = (int) strtol(hexByteStr.c_str(), NULL, 16); // Convert hex to decimal
-            display.binaryWriteCell(i, decimalVal);
+            binaryWriteCell(i, decimalVal);
           }
           else
           {
-            display.binaryWriteCell(i, 0); // clear cell if no character available
+            binaryWriteCell(i, 0); // clear cell if no character available
           }
         }
         scrollIndex++;
@@ -141,7 +185,7 @@ void serialRead()
   if (incomingChar == '*' || incomingChar == '#' || incomingChar == '^')
   {
     newGroupReceived = true;
-    //receivedData = "";
+    receivedData = "";
     receivedData[0]={'\0'};
   }
   else if (incomingChar == '@' || incomingChar == '+' || incomingChar == '|')
@@ -149,7 +193,7 @@ void serialRead()
 
     if (newGroupReceived && languageSet)
     {
-      display.clear();
+      clear();
       newGroupReceived = false;
     }
     if (incomingChar == '|')  // end marker for word grouping feature
@@ -163,6 +207,10 @@ void serialRead()
     }
     else
     {
+      //Serial.println("Received Korean Group: ");
+      //Serial.println(receivedData);
+      //Serial.println("Marker: "); Serial.println(incomingChar);
+      //Serial.println("Language: "); Serial.println(language);
       processBrailleGroup(receivedData, incomingChar, language);
     }
 
@@ -171,23 +219,26 @@ void serialRead()
   }
   else
   {
-    //receivedData += incomingChar;
-    strncat(receivedData, &incomingChar, sizeof(incomingChar));
+    receivedData += incomingChar;
+    //strncat(receivedData, &incomingChar, sizeof(incomingChar));
   }
 }
 
 // process the data and display on the cells
 void processBrailleGroup(String group, char c, char lang)
 {
+  //Serial.println("Group: ");
+  //Serial.println(group);
+  //Serial.print("Length: "); 
   int groupLength = group.length(); 
-
+  //Serial.println(groupLength);
   if (lang == 'K' && c == '@') // Korean character grouping
   {
     for (int i = 0; i < groupLength - 1; i += 2)
     {
       String hexByteStr = group.substring(i, i + 2);
       int decimalVal = (int) strtol(hexByteStr.c_str(), NULL, 16); // Convert hex to decimal
-      display.binaryWriteCell(i / 2, decimalVal);
+      binaryWriteCell(i / 2, decimalVal);
     }
   }
   if (lang == 'K' && c == '+')  // Korean sliding window
@@ -210,7 +261,7 @@ void processBrailleGroup(String group, char c, char lang)
 
       if (cellIndex >= 0 && cellIndex < CELL_COUNT)
       {
-        display.binaryWriteCell(cellIndex, decimalVal);
+        binaryWriteCell(cellIndex, decimalVal);
       }
     }
   }
@@ -228,7 +279,7 @@ void checkButtons()
   // PREV button
   if (buttonStatePrev == LOW && lastButtonStatePrev == HIGH && (currentTime - lastDebounceTimePrev > debounceDelay))
   {
-    //Serial.println("PREV");
+    Serial.println("PREV");
     lastDebounceTimePrev = currentTime;
   }
   lastButtonStatePrev = buttonStatePrev;
@@ -236,7 +287,7 @@ void checkButtons()
   // IDLE button
   if (buttonStateIdle == LOW && lastButtonStateIdle == HIGH && (currentTime - lastDebounceTimeIdle > debounceDelay))
   {
-    //Serial.println("IDLE");
+    Serial.println("IDLE");
     lastDebounceTimeIdle = currentTime;
   }
   lastButtonStateIdle = buttonStateIdle;
@@ -244,7 +295,7 @@ void checkButtons()
   // NEXT button
   if (buttonStateNext == LOW && lastButtonStateNext == HIGH && (currentTime - lastDebounceTimeNext > debounceDelay))
   {
-    //Serial.println("NEXT");
+    Serial.println("NEXT");
     lastDebounceTimeNext = currentTime;
   }
   lastButtonStateNext = buttonStateNext;
