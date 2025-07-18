@@ -237,7 +237,7 @@ void draw()
   String lang = gui.radio(
     "Language",
     new String[] {"English", "Korean"},
-    "English"
+    defaultLanguage == Language.English ? "English" : "Korean"
   );
   if (lang.equals("English"))
   {
@@ -252,18 +252,12 @@ void draw()
     markersString = decompose(korDTEXT)[1];
     textFont(fontKorean);
   }
-  else
-  {
-    defaultLanguage = Language.English;
-    DTEXT = "This is it. \n The fight of our lives and we're going to win. Bla Bla Black Sheep have you any wool.\n Whatever it takes. \n And Hello World!";
-    textFont(fontEnglish);
-  }
 
   // GUI for the Display Mode
   String displayMode = gui.radio(
     "Text Display/Mode",
     new String[] {"Button Mode", "Normal Mode"},
-    "Normal Mode"
+    defaultDisplayMode == textDisplayMode.normalMode ? "Normal Mode" : "Button Mode"
   );
   if (displayMode.equals("Button Mode"))
   {
@@ -275,14 +269,16 @@ void draw()
   }
   else
   {
-    defaultDisplayMode = textDisplayMode.normalMode;
+    defaultDisplayMode = defaultDisplayMode;
   }
 
   // GUI for the Feature Selection
   String feature = gui.radio(
-    "Braille Settings/Feature",
-    new String[] {"Character Grouping", "Word Grouping", "Sliding Window"},
-    "Character Grouping"
+  "Braille Settings/Feature",
+  new String[] {"Character Grouping", "Word Grouping", "Sliding Window"},
+  defaultFeature == Feature.charGrouping ? "Character Grouping" :
+  defaultFeature == Feature.wordGrouping ? "Word Grouping" :
+  "Sliding Window"
   );
 
   if (feature.equals("Character Grouping"))
@@ -293,13 +289,9 @@ void draw()
   {
     defaultFeature = Feature.wordGrouping;
   }
-  else if (feature.equals("Sliding Window"))
-  {
-    defaultFeature = Feature.slidingWindow;
-  }
   else
   {
-    defaultFeature = Feature.charGrouping;
+    defaultFeature = Feature.slidingWindow;
   }
 
 
