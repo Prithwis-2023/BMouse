@@ -7,8 +7,8 @@ import processing.sound.*;
 enum Language {English, Korean}; 
 enum Feature {charGrouping, wordGrouping, slidingWindow}; 
 enum textDisplayMode {buttonMode, normalMode}; // create an enum for the text display modes
-Language defaultLanguage = Language.Korean; // default language
-Feature defaultFeature = Feature.wordGrouping; // default feature
+Language defaultLanguage = Language.English; // default language
+Feature defaultFeature = Feature.charGrouping; // default feature
 textDisplayMode defaultDisplayMode = textDisplayMode.normalMode; // default text display mode
 
 // constants
@@ -82,6 +82,8 @@ void setup()
   ); 
   
   myPort = new Serial(this, portName, 9600);
+  delay(500);                                 // Allow Arduino to finish resetting after serial opens
+  clearBrailleCells();                        // Send a clear command right every time afer connecting
   
   EOLBeep = new SoundFile(this, "endOfLineBeep.mp3");
   COLBeep = new SoundFile(this, "ChangeOfLine.mp3");
@@ -91,23 +93,33 @@ void setup()
   fontKorean = createFont("Noto Sans CJK KR", 32);
 }
 
-// function to send the group to the Arduino
+// function to clear all the cells before reading starts
+void clearBrailleCells() 
+{
+  String clearSignal = "$";  // or any special symbol you agreed on with Arduino
+  myPort.clear();            // flush any garbage bytes before sending clear
+  delay(100);
+  myPort.write(clearSignal);
+}
+
+// function to send the group to the Arduino.
 void sendToBrailleGroup(String group, String startMarker, String endMarker, String markerString, int startIndex, int endIndex, int spacesLeft, int spacesRight)
 {
   if (myPort != null)
   {
     if (defaultLanguage == Language.English)
     {
-      String groupSent = 'E' + startMarker + group + endMarker;
-      myPort.write(groupSent);
-      println("Sent to Arduino: " + groupSent); // Debugging output
+      String brailleString = startMarker + bUnicodesStringENG(group, spacesLeft, spacesRight) + endMarker;
+      myPort.write(brailleString);
+      //print("DBG> Spaces Left and Right: "); print(spacesLeft); println(spacesRight);
+      println("Sent to Arduino ENG: " + brailleString); // Debugging output
     }
     else if (defaultLanguage == Language.Korean)
     {
-      String brailleString = 'K' + startMarker + bUnicodesString(group, markerString, startIndex, endIndex, spacesLeft, spacesRight) + endMarker;
+      String brailleString = startMarker + bUnicodesStringKOR(group, markerString, startIndex, endIndex, spacesLeft, spacesRight) + endMarker;
       myPort.write(brailleString); // send the braille string to the Arduino
       //delay(50);
-      println("Sent to Arduino: " + brailleString); // Debugging output
+      println("Sent to Arduino KOR: " + brailleString); // Debugging output
     }
   }
   else
@@ -586,16 +598,9 @@ void slidingWindowFeature(String line, int frequency, float margin, float lineTo
           groupArray[pos] = tempGroup.charAt(pos); // fill the array with the characters  
         }
       }
-      // calculate the number of spaces to the right (if any)
-      for (int i = 0; i < groupArray.length; i++)
-      {
-        if (groupArray[i] == ' ')
-        {
-          spacesRight += 1;
-        }
-      }
     }
 
+    spacesRight = groupArray.length - spacesLeft - tempGroup.length();
     group = String.valueOf(groupArray); // convert the character array to a string
 
     // If the Edge case is active, prevent the text overflow by adjusting the drawing x-coordinate, which is the position of the character in the line
@@ -619,7 +624,7 @@ void slidingWindowFeature(String line, int frequency, float margin, float lineTo
       {
         if (!group.equals(lastSentGroup)) // send only if this is a new group
         {
-          sendToBrailleGroup(group, "#", "+", markersString, startIndex, endIndex, spacesLeft, spacesRight); // send the group to the Arduino
+          sendToBrailleGroup(tempGroup, "#", "+", markersString, startIndex, endIndex, spacesLeft, spacesRight); // send the group to the Arduino
           lastSentGroup = group; // update the last sent group
         }
       }

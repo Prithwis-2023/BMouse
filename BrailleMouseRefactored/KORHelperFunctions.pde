@@ -63,8 +63,8 @@ String [][] korBrailleDB2 =
     {hex('ㅣ'), "⠕", "-"}
 };
 
-// This function converts a Braille dot pattern to its corresponding one-byte code (for Hanguel)
-String convertBDotTo1ByteCode (String bDot) // this function converts a Braille dot pattern to its corresponding one-byte code
+// This function converts a Braille dot pattern to its corresponding one-byte code
+String convertBDotTo1ByteCodeKOR (String bDot) // this function converts a Braille dot pattern to its corresponding one-byte code
 {
   int index = unhex(hex(bDot.charAt(0))) - 0x2800; // Convert dot string to integer and subtract 0x2800 to get the index
   return hex(index).substring(hex(index).length() - 2); // Convert the index to hex and return the last two characters
@@ -115,31 +115,26 @@ String[] decompose(String inputString)
   return  new String[] {decomposedString, markers};
 }
 
-String bUnicodesString (String group, String markerString, int startIndex, int endIndex, int spacesLeft, int spacesRight)
+String bUnicodesStringKOR (String group, String markerString, int startIndex, int endIndex, int spacesLeft, int spacesRight)
 {
-  char[] decomposedArray = group.toCharArray();
-  String filteredMarkersString = markerString.substring(startIndex, endIndex); // Get the markers for the current group
+  // Extract markers for the current group
+  String filteredMarkersString = markerString.substring(startIndex, endIndex); 
   char[] originalMarkersArray = filteredMarkersString.toCharArray();
   
-  // Create a new array with padding for the sliding window feature edge case
+  // Pad the markers array with 'O' (non-Hangul) on both sides
   int paddedLength = spacesLeft + originalMarkersArray.length + spacesRight;
   char[] markersArray = new char[paddedLength];
-  // Fill the left-padding with 'O'
-  for (int i = 0; i < spacesLeft; i++) 
-  {
-    markersArray[i] = 'O';
-  }
-  // Copying the original markers into the rest
-  for (int i = 0; i < originalMarkersArray.length; i++) 
-  {
-    markersArray[spacesLeft + i] = originalMarkersArray[i];
-  }
-  // Fill the right-padding with 'O'
-  for (int i = spacesLeft + originalMarkersArray.length; i < paddedLength; i++) 
-  {
-    markersArray[i] = 'O';
-  }
-  
+  for (int i = 0; i < spacesLeft; i++) markersArray[i] = 'O';
+  for (int i = 0; i < originalMarkersArray.length; i++) markersArray[spacesLeft + i] = originalMarkersArray[i];
+  for (int i = spacesLeft + originalMarkersArray.length; i < paddedLength; i++) markersArray[i] = 'O';
+
+  // Pad the decomposed group with spaces (matching marker padding)
+  char[] originalChars = group.toCharArray();
+  char[] decomposedArray = new char[paddedLength];
+  for (int i = 0; i < spacesLeft; i++) decomposedArray[i] = ' '; // space padding
+  for (int i = 0; i < originalChars.length; i++) decomposedArray[spacesLeft + i] = originalChars[i];
+  for (int i = spacesLeft + originalChars.length; i < paddedLength; i++) decomposedArray[i] = ' ';
+
   StringBuilder result = new StringBuilder(); // StringBuilder objects are mutable, allowing for modifications
   
   for (int i = 0; i < decomposedArray.length; i++)
@@ -151,7 +146,7 @@ String bUnicodesString (String group, String markerString, int startIndex, int e
       {
         if (korBrailleDB[j][0].equals(hex(ch)))
         {
-          result.append(convertBDotTo1ByteCode(korBrailleDB[j][1])); // Append the Braille representation of the choeseong
+          result.append(convertBDotTo1ByteCodeKOR(korBrailleDB[j][1])); // Append the Braille representation of the choeseong
           break;
         }
       }
@@ -162,7 +157,7 @@ String bUnicodesString (String group, String markerString, int startIndex, int e
       {
         if (korBrailleDB[j][0].equals(hex(ch)))
         {
-          result.append(convertBDotTo1ByteCode(korBrailleDB[j][2])); // Append the Braille representation of the jongseong
+          result.append(convertBDotTo1ByteCodeKOR(korBrailleDB[j][2])); // Append the Braille representation of the jongseong
           break;
         }
       }
@@ -173,10 +168,10 @@ String bUnicodesString (String group, String markerString, int startIndex, int e
       {
         if (korBrailleDB2[j][0].equals(hex(ch)))
         {
-          result.append(convertBDotTo1ByteCode(korBrailleDB2[j][1])); // Append the Braille representation of the jungseong
+          result.append(convertBDotTo1ByteCodeKOR(korBrailleDB2[j][1])); // Append the Braille representation of the jungseong
           if (!korBrailleDB2[j][2].equals("-")) // If there is a second part of the jungseong
           {
-            result.append(convertBDotTo1ByteCode(korBrailleDB2[j][2])); // Append the second part of the jungseong
+            result.append(convertBDotTo1ByteCodeKOR(korBrailleDB2[j][2])); // Append the second part of the jungseong
           }
           break;
         }
@@ -194,6 +189,5 @@ String bUnicodesString (String group, String markerString, int startIndex, int e
       }
     }
   }
-  String RESULT = result.toString(); // Convert StringBuilder to String
-  return RESULT; // Return the result
+  return result.toString(); // Convert StringBuilder to String and return the resulting string
 }
