@@ -13,20 +13,35 @@ String receivedData = "";
 String currentWord = "";
 bool newGroupReceived = false;
 bool newWordAvailable = false;
+char language = '\0'; // 'E' for English, 'K' for Korean, etc.
+bool languageSet = false;
 int scrollIndex = 0;
 int scrollTimer = 0;
 
 char digits[10] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
 char alphabets[10] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'};
 
+bool lastButtonStatePrev = HIGH;
+bool lastButtonStateIdle = HIGH;
+bool lastButtonStateNext = HIGH;
+
+unsigned long lastDebounceTimePrev = 0;
+unsigned long lastDebounceTimeIdle = 0;
+unsigned long lastDebounceTimeNext = 0;
+const unsigned long debounceDelay = 50;
+
 void setup()
 {
+  pinMode(10, INPUT_PULLUP); // the previous button
+  pinMode(11, INPUT_PULLUP); // idle button (TBD)
+  pinMode(12, INPUT_PULLUP); // next button
+
   Serial.begin(9600);
   display.begin();
   display.clear();
 
   cli();
-
+  
   // set timer2 (8 bits) at the interrupt frequency 1 kHz
   TCCR2A = 0; // set entire TCCR2A register to 0
   TCCR2B = 0; // same for TCCR2B
@@ -44,7 +59,8 @@ void setup()
   sei(); // allow interrupts
 }
 
-ISR(TIMER2_COMPA_vect) // timer 2 interrupt  
+// Timer 2 Interrupt
+ISR(TIMER2_COMPA_vect) 
 {
   if (newWordAvailable)
   {
@@ -112,50 +128,55 @@ void loop()
 {
   while (Serial.available() > 0)
   {
-    char incomingChar = Serial.read();
+    serialRead(); 
+  }
 
-    if (incomingChar == '*' || incomingChar == '#' || incomingChar == '^')
+  checkButtons();
+}
+
+// reading the serial input and setting the variables
+void serialRead()
+{
+  char incomingChar = Serial.read();
+
+  if (incomingChar == 'E')
+  {
+    language = incomingChar;
+    languageSet = true;
+  }
+  if (incomingChar == '*' || incomingChar == '#' || incomingChar == '^')
+  {
+    newGroupReceived = true;
+    receivedData = "";
+  }
+  else if (incomingChar == '@' || incomingChar == '+' || incomingChar == '|')
+  {
+    if (newGroupReceived && languageSet)
     {
-      newGroupReceived = true;
-      receivedData = ""; // Clear when new group starts
+      display.clear();
+      newGroupReceived = false;
     }
-    else if (incomingChar == '@' || incomingChar == '+' || incomingChar == '|')
+    if (incomingChar == '|')  // end marker for word grouping feature
     {
-      if (newGroupReceived)
-      {
-        display.clear();
-        newGroupReceived = false;
-      }
-      if (incomingChar == '|')  // end marker for word grouping feature
-      {
-        currentWord = receivedData;
-        scrollIndex = 0; // start from the beginning
-        newWordAvailable = true;
-      }
-      else
-      {
-        processBrailleGroup(receivedData, incomingChar);
-      }
+      currentWord = receivedData;
+      scrollIndex = 0; // start from the beginning
+      newWordAvailable = true;
     }
     else
     {
-      receivedData += incomingChar;
+      processBrailleGroup(receivedData, incomingChar, language);
     }
+
+    language = '\0';
+    languageSet = false;
+  }
+  else
+  {
+    receivedData += incomingChar;
   }
 }
 
-// uint16_t charToBraille(char c)
-// {
-//   for (int i = 0; i < 256; i++)
-//   {
-//     if (display._brailleChars[i] == c)
-//     {
-//       return (uint16_t)(0x2800 + i);
-//     }
-//   }
-//   return 0x2800; 
-// }
-
+// auxillary function for detecting numeric data
 char isNumericandReplace(char c)
 {
   for (int i = 0; i < 10; i++)
@@ -169,11 +190,12 @@ char isNumericandReplace(char c)
   return '\0';
 }
 
-void processBrailleGroup(String group, char c)
+// process the data and display on the cells
+void processBrailleGroup(String group, char c, char lang)
 {
   int groupLength = group.length(); 
 
-  if (c == '@') // end marker for character grouping feature
+  if (lang == 'E' && c == '@') // end marker for character grouping feature
   {
     for (int i = 0; i < groupLength; i++)
     {
@@ -190,7 +212,7 @@ void processBrailleGroup(String group, char c)
       }
     }
   }
-  else if (c == '+') // end marker for sliding window feature
+  else if (lang == 'E' && c == '+') // end marker for sliding window feature
   {
     int middleIndex = (groupLength - 1) / 2;
 
@@ -230,27 +252,39 @@ void processBrailleGroup(String group, char c)
       }
     }
   }
-  // else if (c == '|')
-  // {
-  //   uint16_t charsArray[groupLength];
-
-  //   if (groupLength <= CELL_COUNT)
-  //   {
-  //     for (int i = 0; i < groupLength; i++)
-  //     {
-  //       display.writeCell(group[i], i);
-  //     }
-  //   }
-  //   else if (groupLength > CELL_COUNT)
-  //   {
-  //     for (int i = 0; i < groupLength; i++)
-  //     {
-  //       char c = tolower(group.charAt(i));
-  //       uint16_t unicode = charToBraille(c);
-  //       charsArray[i] = unicode;
-  //     }
-      
-  //     display.writeCells(charsArray, groupLength);
-  //   }
-  // }
 }
+
+// function for the button mode
+void checkButtons()
+{
+  unsigned long currentTime = millis();
+
+  bool buttonStatePrev = digitalRead(10);
+  bool buttonStateIdle = digitalRead(11);
+  bool buttonStateNext = digitalRead(12);
+  
+  // PREV button
+  if (buttonStatePrev == LOW && lastButtonStatePrev == HIGH && (currentTime - lastDebounceTimePrev > debounceDelay))
+  {
+    Serial.println("PREV");
+    lastDebounceTimePrev = currentTime;
+  }
+  lastButtonStatePrev = buttonStatePrev;
+
+  // IDLE button
+  if (buttonStateIdle == LOW && lastButtonStateIdle == HIGH && (currentTime - lastDebounceTimeIdle > debounceDelay))
+  {
+    Serial.println("IDLE");
+    lastDebounceTimeIdle = currentTime;
+  }
+  lastButtonStateIdle = buttonStateIdle;
+
+  // NEXT button
+  if (buttonStateNext == LOW && lastButtonStateNext == HIGH && (currentTime - lastDebounceTimeNext > debounceDelay))
+  {
+     Serial.println("NEXT");
+    lastDebounceTimeNext = currentTime;
+  }
+  lastButtonStateNext = buttonStateNext;
+}
+
