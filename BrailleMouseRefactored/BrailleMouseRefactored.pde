@@ -5,10 +5,12 @@ import processing.sound.*;
 
 // create enums for the text display modes and the features
 enum Language {English, Korean}; 
-enum Feature {charGrouping, wordGrouping, slidingWindow}; 
+enum Feature {charGrouping, wordGrouping, slidingWindow}; // create an enum for the features
+enum textMode {plainTextMode, fileMode}; // create an enum for the mode of text, either plain text or extraction from a txt file
 enum textDisplayMode {buttonMode, normalMode}; // create an enum for the text display modes
 Language defaultLanguage = Language.English; // default language
 Feature defaultFeature = Feature.charGrouping; // default feature
+textMode defaultTextMode = textMode.plainTextMode; // default text mode
 textDisplayMode defaultDisplayMode = textDisplayMode.normalMode; // default text display mode
 
 // constants
@@ -23,11 +25,14 @@ final int defaultSlidingWindow_FREQ = 8;  // sliding window frequency for slidin
 
 
 int textIndex = 0; // index for the lines of the sample text
+int randIndex = 0; // random start index in case of the file mode. Same for the korean file mode
 String DTEXT = "This is it. \n The fight of our lives and we're going to win. Bla Bla Black Sheep have you any wool.\n Whatever it takes. \n And Hello World!";  // custom text
 String korDTEXT = "안녕하세요 반갑습니다 각"; // custom Korean text
 String markersString = ""; // markers for the Korean text
 
 String[] lines;
+String[] engLinesFromFile; 
+String[] korLinesFromFile;
 
 // Sound
 SoundFile EOLBeep; 
@@ -91,6 +96,10 @@ void setup()
   
   fontEnglish = createFont("MapleMono-SemiBold.otf", 32);
   fontKorean = createFont("Noto Sans CJK KR", 32);
+
+  engLinesFromFile = loadStrings("textENG.txt");
+  korLinesFromFile = loadStrings("textKOR.txt");
+  randIndex = int(random(engLinesFromFile.length - 9)); // because we want 10 lines, so we need to subtract. We don't need another one for the korean mode
 }
 
 // function to clear all the cells before reading starts
@@ -279,10 +288,6 @@ void draw()
   {
     defaultDisplayMode = textDisplayMode.normalMode;
   }
-  else
-  {
-    defaultDisplayMode = defaultDisplayMode;
-  }
 
   // GUI for the Feature Selection
   String feature = gui.radio(
@@ -306,21 +311,57 @@ void draw()
     defaultFeature = Feature.slidingWindow;
   }
 
-
-  // Handle the text input 
-  userInput = DTEXT; // display the text in the center of the screen
-  gui.text("Text/Input", DTEXT);
-
   // Text Settings
   float extraSpacing = gui.sliderInt("Text Settings/Line Spacing", 10);
   float textSizeVal = gui.sliderInt("Text Settings/Text Size", 32);
   float boxHeightVal = gui.sliderInt("Text Settings/Box Height", 0);
   float margin = gui.sliderInt("Text Settings/ Margin", 100);
 
+  // Handle the text input
+  String text = gui.radio(
+    "Text/Mode",
+    new String[] {"Plain Text", "File"},
+    defaultTextMode == textMode.plainTextMode ? "Plain Text" : "File"
+  );
+  if (text.equals("Plain Text"))
+  {
+    defaultTextMode = textMode.plainTextMode;
+  }
+  else if (text.equals("File"))
+  {
+    defaultTextMode = textMode.fileMode;
+  }
+  
+  if (defaultTextMode == textMode.plainTextMode)
+  {
+    userInput = DTEXT; // display the text in the center of the screen
+    gui.text("Text/Input", DTEXT);
+    // Transformation of the text into lines
+    float maxWidth = width - 2 * margin;
+    lines = wrapText(userInput, maxWidth);
+  }
+  else if (defaultTextMode == textMode.fileMode)
+  {
+    lines = new String[10];
+    if (defaultLanguage == Language.English)
+    {
+      arraycopy(engLinesFromFile, randIndex, lines, 0, 10); // arrayCopy(src, srcPos, dest, destPos, length)
+    }
+    else if (defaultLanguage == Language.Korean)
+    {
+      arraycopy(korLinesFromFile, randIndex, lines, 0, 10); // arrayCopy(src, srcPos, dest, destPos, length)
+      println(lines);
+      String[] decomposed = decompose(lines[0]); // returns array: [decomposedText, markers]
+      DTEXT = decomposed[0]; // update text for display
+      markersString = decomposed[1]; // store marker info
+      //println(DTEXT);
+      //lines = wrapText(DTEXT, width - 2 * margin); // re-wrap decomposed Korean
+    }
+  }
 
-  // Transformation of the text into lines
-  float maxWidth = width - 2 * margin;
-  lines = wrapText(userInput, maxWidth);
+  // // Transformation of the text into lines
+  // float maxWidth = width - 2 * margin;
+  // lines = wrapText(userInput, maxWidth);
 
   // Text Formatting 
   fill (255);                   // set the text colot to white
