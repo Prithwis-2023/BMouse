@@ -1,3 +1,5 @@
+import java.util.Map;
+
 /* Create the DBs for the Hanguel */ 
 final char[] CHOESEONG = 
 {
@@ -18,6 +20,7 @@ final char[] JONGSEONG =
     'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'
 };
 
+
 // DB for choeseong and jongseong (the first and the last consonants of the syllable)
 String[][] korBrailleDB =  
 {
@@ -35,8 +38,26 @@ String[][] korBrailleDB =
     {hex('ㅋ'), "⠋", "⠖"},
     {hex('ㅌ'), "⠓", "⠦"},
     {hex('ㅍ'), "⠙", "⠲"},
-    {hex('ㅎ'), "⠚", "⠴"}
+    {hex('ㅎ'), "⠚", "⠴"},
+    {hex('ㄲ'), "", ""},
+    {hex('ㄸ'), "", ""},
+    {hex('ㅃ'), "", ""},
+    {hex('ㅆ'), "", ""},
+    {hex('ㅉ'), "", ""},
+    {hex('ㄳ'), "", ""},
+    {hex('ㄵ'), "", ""},
+    {hex('ㄶ'), "", ""},
+    {hex('ㄺ'), "", ""},
+    {hex('ㄻ'), "", ""},
+    {hex('ㄼ'), "", ""},
+    {hex('ㄽ'), "", ""},
+    {hex('ㄾ'), "", ""},
+    {hex('ㄿ'), "", ""},
+    {hex('ㅀ'), "", ""},
+    {hex('ㅄ'), "", ""},
+    {hex('ㅆ'), "", ""}
 };
+
 // DB for jungsung (the middle vowel of the syllable, which sometimes has two parts)
 String [][] korBrailleDB2 = 
 {
@@ -63,6 +84,51 @@ String [][] korBrailleDB2 =
     {hex('ㅣ'), "⠕", "-"}
 };
 
+HashMap<Character, String> otherChars = new HashMap<Character, String>() {{
+  put(',', "⠂");
+  put('.', "⠲");
+  put('!', "⠖");
+  put('?', "⠦");
+  put('1', "⠁");
+  put('2', "⠃");
+  put('3', "⠉");
+  put('4', "⠙");
+  put('5', "⠑");
+  put('6', "⠋");
+  put('7', "⠛");
+  put('8', "⠓");
+  put('9', "⠊");
+  put('0', "⠚");
+}};
+
+HashMap<Character, String> CONTRACTIONS = new HashMap<Character, String>() {{
+  put('가', "⠫");
+  put('나', "⠉");
+  put('다', "⠊");
+  put('마', "⠑");
+  put('바', "⠘");
+  put('사', "⠇");
+  put('자', "⠨");
+  put('카', "⠋");
+  put('타', "⠓");
+  put('파', "⠙");
+  put('하', "⠚");
+  put('억', "⠹");
+  put('옹', "⠿");
+  put('울', "⠯");
+  put('옥', "⠭");
+  put('연', "⠡");
+  put('운', "⠛");
+  put('온', "⠷");
+  put('언', "⠾");
+  put('얼', "⠞");
+  put('열', "⠳");
+  put('인', "⠟");
+  put('영', "⠻");
+  put('을', "⠮");
+  put('은', "⠵");
+}};
+
 // This function converts a Braille dot pattern to its corresponding one-byte code
 String convertBDotTo1ByteCodeKOR (String bDot) // this function converts a Braille dot pattern to its corresponding one-byte code
 {
@@ -78,38 +144,46 @@ String[] decompose(String inputString)
   for (int i = 0; i < inputString.length(); i++)
   {
     char ch = inputString.charAt(i);
-    if (ch >= 0xAC00 && ch <= 0xD7A3)  // check if the character is a Hanguel syllable
+    if (CONTRACTIONS.containsKey(ch))
     {
-      int syllableIndex = ch - 0xAC00;
-      int choeseongIndex = syllableIndex / (21 * 28);
-      int jungseongIndex = (syllableIndex % (21 * 28)) / 28;
-      int jongseongIndex = syllableIndex % 28;
-
-      char choeseong = CHOESEONG[choeseongIndex];
-      char jungseong = JUNGSEONG[jungseongIndex];
-      char jongseong = JONGSEONG[jongseongIndex];
-
-      if (choeseong == 'ㅇ') // If the choeseong is the voiceless circle, we don't need to append it
-      {
-        decomposedString += str(jungseong);
-        markers += str('j'); // j for jungseong
-      }
-      else
-      {
-        decomposedString += str(choeseong) + str(jungseong);
-        markers += str('C') + str('j'); // C for choeseong, j for jungseong
-      }
-
-      if (jongseong != '\0')
-      {
-        decomposedString += str(jongseong);
-        markers += 'J'; // J for jongseong
-      }
+      decomposedString += str(ch);
+      markers += 'O';
     }
     else
     {
-      markers += 'O'; // If not a Hanguel syllable, just append the 'O' marker
-      decomposedString += ch; // If not a Hanguel syllable, just append the character
+      if (ch >= 0xAC00 && ch <= 0xD7A3)  // check if the character is a Hanguel syllable
+      {
+        int syllableIndex = ch - 0xAC00;
+        int choeseongIndex = syllableIndex / (21 * 28);
+        int jungseongIndex = (syllableIndex % (21 * 28)) / 28;
+        int jongseongIndex = syllableIndex % 28;
+
+        char choeseong = CHOESEONG[choeseongIndex];
+        char jungseong = JUNGSEONG[jungseongIndex];
+        char jongseong = JONGSEONG[jongseongIndex];
+
+        if (choeseong == 'ㅇ') // If the choeseong is the voiceless circle, we don't need to append it
+        {
+          decomposedString += str(jungseong);
+          markers += str('j'); // j for jungseong
+        }
+        else
+        {
+          decomposedString += str(choeseong) + str(jungseong);
+          markers += str('C') + str('j'); // C for choeseong, j for jungseong
+        }
+
+        if (jongseong != '\0')
+        {
+          decomposedString += str(jongseong);
+          markers += 'J'; // J for jongseong
+        }
+      }
+      else
+      {
+        markers += 'O'; // If not a Hanguel syllable, just append the 'O' marker
+        decomposedString += ch; // If not a Hanguel syllable, just append the character
+      }
     }
   }
   return  new String[] {decomposedString, markers};
@@ -183,9 +257,25 @@ String bUnicodesStringKOR (String group, String markerString, int startIndex, in
       {
         result.append("00");
       }
+      else if (Character.isDigit(decomposedArray[i]))
+      {
+        if (i == 0 || !Character.isDigit(decomposedArray[i - 1])) // putting the numeric marker only once
+        {
+          result.append(convertBDotTo1ByteCodeKOR("⠼"));
+        }
+        result.append(convertBDotTo1ByteCodeKOR(otherChars.get(decomposedArray[i])));
+      }
+      else if (otherChars.containsKey(decomposedArray[i]))
+      {
+        result.append(convertBDotTo1ByteCodeKOR(otherChars.get(decomposedArray[i])));
+      }
+      else if (CONTRACTIONS.containsKey(decomposedArray[i]))
+      {
+        result.append(convertBDotTo1ByteCodeKOR(CONTRACTIONS.get(decomposedArray[i])));
+      }
       else
       {
-        result.append(ch); // If not a Hanguel syllable, just append the character
+        result.append("00");
       }
     }
   }

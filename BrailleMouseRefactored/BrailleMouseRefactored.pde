@@ -27,7 +27,7 @@ final int defaultSlidingWindow_FREQ = 8;  // sliding window frequency for slidin
 int textIndex = 0; // index for the lines of the sample text
 int randIndex = 0; // random start index in case of the file mode. Same for the korean file mode
 String DTEXT = "This is it. \n The fight of our lives and we're going to win. Bla Bla Black Sheep have you any wool.\n Whatever it takes. \n And Hello World!";  // custom text
-String korDTEXT = "안녕하세요 반갑습니다 각"; // custom Korean text
+String korDTEXT = "안녕하세요 반갑습니다 각. 123"; // custom Korean text
 String markersString = ""; // markers for the Korean text
 
 String[] lines;
