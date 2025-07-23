@@ -143,7 +143,7 @@ String[] decompose(String inputString)
   for (int i = 0; i < inputString.length(); i++)
   {
     char ch = inputString.charAt(i);
-    if (ch >= 0xAC00 && ch <= 0xD7A3)
+    if (ch >= 0xAC00 && ch <= 0xD7A3) // if a Hanguel syllable
     {
       if (CONTRACTIONS.containsKey(ch))
       {
@@ -205,9 +205,9 @@ String[] decompose(String inputString)
         }
       }
     }
-    else
+    else  // If not a Hanguel syllable 
     {
-      if (otherChars.containsKey(ch))
+      if (otherChars.containsKey(ch)) // if among the known list of punctuations and numerals
       {
         if (Character.isDigit(ch))
         {
@@ -222,17 +222,39 @@ String[] decompose(String inputString)
           decomposedString += otherChars.get(ch);
         }
       }
-      if (CONTRACTIONS.containsKey(ch))
+      else  // beyond the otherChars list, for example spaces
       {
-        decomposedString += CONTRACTIONS.get(ch);
+        decomposedString += str(ch);
       }
-      //markers += str('O');
-      //decomposedString += ch;
     }
   }
   return  new String[] {decomposedString, markers};
 }
 
+String bUnicodesStringKOR (String group, int spacesLeft, int spacesRight)
+{
+  StringBuilder result = new StringBuilder(); // StringBuilder objects are mutable, allowing for modifications
+  
+  int paddedLength = spacesLeft + group.length() + spacesRight;  
+  char[] originalChars = group.toCharArray();
+  char[] decomposedArray = new char[paddedLength];
+  for (int i = 0; i < spacesLeft; i++) decomposedArray[i] = ' '; 
+  for (int i = 0; i < originalChars.length; i++) decomposedArray[spacesLeft + i] = originalChars[i];
+  for (int i = spacesLeft + originalChars.length; i < paddedLength; i++) decomposedArray[i] = ' ';
+
+  for (int i = 0; i < decomposedArray.length; i++)
+  {
+    if (decomposedArray[i] == ' ')
+    {
+      result.append("00");
+    }
+    else
+    {
+      result.append(convertBDotTo1ByteCodeKOR(str(decomposedArray[i])));
+    }
+  }
+  return result.toString();
+}
 /*String bUnicodesStringKOR (String group, String markerString, int startIndex, int endIndex, int spacesLeft, int spacesRight)
 {
   // Extract markers for the current group
