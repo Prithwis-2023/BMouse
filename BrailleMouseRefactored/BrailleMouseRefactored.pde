@@ -74,10 +74,11 @@ void settings()
   size(1920, 1080, P2D); 
 }
 
-// Setup function - GUI, Serial, Sound
+// Setup function - GUI, Serial, Sound and function calls from language based processing files
 void setup()
 {
-  //fullScreen(P2D); // set the window to full screen
+  init();  // from KORHelperFunctionsm file
+
   surface.setResizable(true);
 
   // Initialize LazyGui
@@ -125,8 +126,9 @@ void sendToBrailleGroup(String group, String startMarker, String endMarker, Stri
     }
     else if (defaultLanguage == Language.Korean)
     {
-      String brailleString = startMarker + bUnicodesStringKOR(group, markerString, startIndex, endIndex, spacesLeft, spacesRight) + endMarker;
-      myPort.write(brailleString); // send the braille string to the Arduino
+      //String brailleString = startMarker + bUnicodesStringKOR(group, markerString, startIndex, endIndex, spacesLeft, spacesRight) + endMarker;
+      //myPort.write(brailleString); // send the braille string to the Arduino
+      String brailleString = startMarker + group + endMarker;
       //delay(50);
       println("Sent to Arduino KOR: " + brailleString); // Debugging output
     }
