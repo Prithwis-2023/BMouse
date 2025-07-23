@@ -255,6 +255,7 @@ String bUnicodesStringKOR (String group, int spacesLeft, int spacesRight)
   }
   return result.toString();
 }
+
 /*String bUnicodesStringKOR (String group, String markerString, int startIndex, int endIndex, int spacesLeft, int spacesRight)
 {
   // Extract markers for the current group

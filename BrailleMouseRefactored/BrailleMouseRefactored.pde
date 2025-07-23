@@ -127,9 +127,7 @@ void sendToBrailleGroup(String group, String startMarker, String endMarker, Stri
     else if (defaultLanguage == Language.Korean)
     {
       String brailleString = startMarker + bUnicodesStringKOR(group, spacesLeft, spacesRight) + endMarker;
-      //myPort.write(brailleString); // send the braille string to the Arduino
-      //String brailleString = startMarker + group + endMarker;
-      //delay(50);
+      /myPort.write(brailleString); // send the braille string to the Arduino
       println("Sent to Arduino KOR: " + brailleString); // Debugging output
     }
   }
