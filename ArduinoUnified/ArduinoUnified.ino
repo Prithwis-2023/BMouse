@@ -28,10 +28,7 @@ const unsigned long debounceDelay = 50;
 void begin()
 {
     Serial.begin(9600);
-    for (int i = 0; i < CELL_COUNT; i++) 
-    {
-      binaryWriteCell(i, 0x00);
-    }
+    clear();
     pinMode(ON_PIN, OUTPUT);
     pinMode(DIN_PIN, OUTPUT);
     pinMode(LATCH_PIN, OUTPUT);
@@ -40,10 +37,10 @@ void begin()
 
 void clear()
 {
-    for (uint8_t i = CELL_COUNT; i > 0; i--)
-    {
-        binaryWriteCell(i, 0x00);
-    }
+  for (int i = 0; i < CELL_COUNT; i++) 
+  {
+    binaryWriteCell(i, 0x00);
+  }
 }
 
 void binaryWriteCell(uint8_t position, byte byteVal)
@@ -169,10 +166,7 @@ void serialRead()
 
   if (incomingChar == '$')
   {
-    for (int i = 0; i < CELL_COUNT; i++) 
-    {
-      binaryWriteCell(i, 0x00);
-    }
+    clear();
   }
   if (incomingChar == '*' || incomingChar == '#' || incomingChar == '^')
   {

@@ -117,7 +117,7 @@ void exit()
 // function to clear all the cells before reading starts
 void clearBrailleCells() 
 {
-  String clearSignal = "$";  // or any special symbol you agreed on with Arduino
+  String clearSignal = "$";  // the default clear signal to clear the braille cells
   myPort.clear();            // flush any garbage bytes before sending clear
   delay(100);
   myPort.write(clearSignal);
