@@ -48,13 +48,6 @@ String[][] engBrailleDB =
     {hex('#'), "⠼"}  // 0x283C
 };
 
-// This function converts a Braille dot pattern to its corresponding one-byte code
-String convertBDotTo1ByteCodeENG (String bDot) // this function converts a Braille dot pattern to its corresponding one-byte code
-{
-  int index = unhex(hex(bDot.charAt(0))) - 0x2800; // Convert dot string to integer and subtract 0x2800 to get the index
-  return hex(index).substring(hex(index).length() - 2); // Convert the index to hex and return the last two characters
-}
-
 String bUnicodesStringENG (String group, int spacesLeft, int spacesRight)
 {
     group = group.toLowerCase();
@@ -90,7 +83,7 @@ String bUnicodesStringENG (String group, int spacesLeft, int spacesRight)
         {
             if (!numberMode)
             {
-                result.append(convertBDotTo1ByteCodeENG("⠼")); // append only once
+                result.append(convertBDotTo1ByteCode("⠼")); // append only once
                 numberMode = true;
             }
 
@@ -100,7 +93,7 @@ String bUnicodesStringENG (String group, int spacesLeft, int spacesRight)
             {
                 if (engBrailleDB[j][0].equals(hex(correspondingChar)))
                 {
-                    result.append(convertBDotTo1ByteCodeENG(engBrailleDB[j][1]));
+                    result.append(convertBDotTo1ByteCode(engBrailleDB[j][1]));
                     break;
                 }
             }
@@ -112,7 +105,7 @@ String bUnicodesStringENG (String group, int spacesLeft, int spacesRight)
             {
                 if (engBrailleDB[j][0].equals(hex(finalGroup[i])))
                 {
-                    result.append(convertBDotTo1ByteCodeENG(engBrailleDB[j][1]));
+                    result.append(convertBDotTo1ByteCode(engBrailleDB[j][1]));
                     break;
                 }
             }

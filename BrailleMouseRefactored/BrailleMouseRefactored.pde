@@ -30,9 +30,9 @@ String DTEXT = "This is it. \n The fight of our lives and we're going to win. Bl
 String korDTEXT = "시계가 물에 빠졌다. 123"; // custom Korean text
 String markersString = ""; // markers for the Korean text
 
-String[] lines;
-String[] engLinesFromFile; 
-String[] korLinesFromFile;
+String[] lines;            // holds the lines to be sent for processing
+String[] engLinesFromFile; // used for holding the random lines extracted from the english text file
+String[] korLinesFromFile; // used for holding the random lines extracted from the korean text file
 
 // Sound
 SoundFile EOLBeep; 
@@ -76,7 +76,7 @@ void settings()
 // Setup function - GUI, Serial, Sound and function calls from language based processing files
 void setup()
 {
-  init();  // from KORHelperFunctionsm file
+  init();  // utilized for Korean Language, this function puts all the key value pairs into the hash maps
 
   surface.setResizable(true);
 

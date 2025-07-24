@@ -130,13 +130,6 @@ boolean containsChar(char[] array, char target)
   return false;
 }
 
-// This function converts a Braille dot pattern to its corresponding one-byte code
-String convertBDotTo1ByteCodeKOR (String bDot) // this function converts a Braille dot pattern to its corresponding one-byte code
-{
-  int index = unhex(hex(bDot.charAt(0))) - 0x2800; // Convert dot string to integer and subtract 0x2800 to get the index
-  return hex(index).substring(hex(index).length() - 2); // Convert the index to hex and return the last two characters
-}
-
 // This function decomposes an entire Hanguel text string into its individual components
 // and returns the braille dot representation of the decomposed text
 String decompose(String inputString)
@@ -252,7 +245,7 @@ String bUnicodesStringKOR (String group, int spacesLeft, int spacesRight)
     }
     else
     {
-      result.append(convertBDotTo1ByteCodeKOR(str(decomposedArray[i])));
+      result.append(convertBDotTo1ByteCode(str(decomposedArray[i])));
     }
   }
   return result.toString();
