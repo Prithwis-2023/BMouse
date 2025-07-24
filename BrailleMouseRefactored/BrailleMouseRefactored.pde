@@ -23,11 +23,11 @@ textDisplayMode defaultDisplayMode = textDisplayMode.normalMode; // default text
 final int defaultCharGrouping_FREQ = 5;  // character group frequency for charGrouping feature
 final int defaultSlidingWindow_FREQ = 8;  // sliding window frequency for slidingWindow feature. Can be 1, 3, 5 or 8
 
-
+/* Text and Languages Related */
 int textIndex = 0; // index for the lines of the sample text
 int randIndex = 0; // random start index in case of the file mode. Same for the korean file mode
 String DTEXT = "This is it. \n The fight of our lives and we're going to win. Bla Bla Black Sheep have you any wool.\n Whatever it takes. \n And Hello World!";  // custom text
-String korDTEXT = "안녕하세요 반갑습니다 각. 123"; // custom Korean text
+String korDTEXT = "시계가 물에 빠졌다. 123"; // custom Korean text
 String markersString = ""; // markers for the Korean text
 
 String[] lines;
@@ -44,7 +44,6 @@ boolean isBeyondTopnBottom = false;
 // Serial Port
 Serial myPort;
 String portName = Serial.list()[0];  // default port
-
 
 // GUI
 LazyGui gui;
@@ -99,9 +98,21 @@ void setup()
   fontKorean = createFont("Noto Sans CJK KR", 32);
 
   engLinesFromFile = loadStrings("textENG.txt");
-  korLinesFromFile = loadStrings("textKOR.txt");
-  randIndex = int(random(engLinesFromFile.length - 9)); // because we want 10 lines, so we need to subtract. We don't need another one for the korean mode
+  korLinesFromFile = loadStrings("textKOR2.txt");
+  for (int i = 0; i < korLinesFromFile.length; i++)
+  {
+    korLinesFromFile[i] = decompose(korLinesFromFile[i]);
+  }
+  randIndex = int(random(Math.min(korLinesFromFile.length, engLinesFromFile.length) - 9)); // because we want 10 lines, so we need to subtract. We don't need another one for the korean mode
 }
+
+// clearing all the cells upon killing the program
+void exit() 
+{
+  clearBrailleCells();
+  super.exit();         // super.exit() to ensure the sketch closes
+}
+
 
 // function to clear all the cells before reading starts
 void clearBrailleCells() 
@@ -113,7 +124,7 @@ void clearBrailleCells()
 }
 
 // function to send the group to the Arduino.
-void sendToBrailleGroup(String group, String startMarker, String endMarker, String markerString, int startIndex, int endIndex, int spacesLeft, int spacesRight)
+void sendToBrailleGroup(String group, String startMarker, String endMarker, int spacesLeft, int spacesRight)
 {
   if (myPort != null)
   {
@@ -121,7 +132,6 @@ void sendToBrailleGroup(String group, String startMarker, String endMarker, Stri
     {
       String brailleString = startMarker + bUnicodesStringENG(group, spacesLeft, spacesRight) + endMarker;
       myPort.write(brailleString);
-      //print("DBG> Spaces Left and Right: "); print(spacesLeft); println(spacesRight);
       println("Sent to Arduino ENG: " + brailleString); // Debugging output
     }
     else if (defaultLanguage == Language.Korean)
@@ -269,8 +279,7 @@ void draw()
   else if (lang.equals("Korean"))
   {
     defaultLanguage = Language.Korean;
-    DTEXT = decompose(korDTEXT)[0]; // decompose the Korean text
-    markersString = decompose(korDTEXT)[1];
+    DTEXT = decompose(korDTEXT); // decompose the Korean text
     textFont(fontKorean);
   }
 
@@ -345,17 +354,14 @@ void draw()
     lines = new String[10];
     if (defaultLanguage == Language.English)
     {
-      arraycopy(engLinesFromFile, randIndex, lines, 0, 10); // arrayCopy(src, srcPos, dest, destPos, length)
+      arrayCopy(engLinesFromFile, randIndex, lines, 0, 10); // arrayCopy(src, srcPos, dest, destPos, length)
     }
     else if (defaultLanguage == Language.Korean)
     {
-      arraycopy(korLinesFromFile, randIndex, lines, 0, 10); // arrayCopy(src, srcPos, dest, destPos, length)
-      println(lines);
-      String[] decomposed = decompose(lines[0]); // returns array: [decomposedText, markers]
-      DTEXT = decomposed[0]; // update text for display
-      markersString = decomposed[1]; // store marker info
-      //println(DTEXT);
-      //lines = wrapText(DTEXT, width - 2 * margin); // re-wrap decomposed Korean
+      arrayCopy(korLinesFromFile, randIndex, lines, 0, 10); // arrayCopy(src, srcPos, dest, destPos, length)
+      //println(lines);
+      String decomposed = decompose(lines[0]); 
+      DTEXT = decomposed; // update text for display
     }
   }
 
@@ -533,7 +539,7 @@ void charGroupingFeature(String line, int frequency, float margin, float lineTop
     {
       if (!group.equals(lastSentGroup))
       {
-        sendToBrailleGroup(group, "*", "@", markersString, j, endIndex, 0, 0); // send the group to the Arduino
+        sendToBrailleGroup(group, "*", "@", 0, 0); // send the group to the Arduino
         lastSentGroup = group; // update the last sent group
       }
     }
@@ -665,7 +671,7 @@ void slidingWindowFeature(String line, int frequency, float margin, float lineTo
       {
         if (!group.equals(lastSentGroup)) // send only if this is a new group
         {
-          sendToBrailleGroup(tempGroup, "#", "+", markersString, startIndex, endIndex, spacesLeft, spacesRight); // send the group to the Arduino
+          sendToBrailleGroup(tempGroup, "#", "+", spacesLeft, spacesRight); // send the group to the Arduino
           lastSentGroup = group; // update the last sent group
         }
       }
@@ -705,7 +711,7 @@ void wordGroupingFeature(String line, float margin, float lineTopEnd, float line
     {
       if (!word.equals(lastSentGroup))
       {
-        sendToBrailleGroup(word, "^", "|",  markersString, startIndex, endIndex, 0, 0); // send the group to the Arduino
+        sendToBrailleGroup(word, "^", "|", 0, 0); // send the group to the Arduino
         lastSentGroup = word; // update the last sent group
       }
     }

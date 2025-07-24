@@ -28,8 +28,8 @@ final char[] doubleConsonants =
 };
 
 
-HashMap<Character, List<String>> korBrailleDB = new HashMap<Character, List<String>>();
-HashMap<Character, List<String>> korBrailleDB2 = new HashMap<Character, List<String>>();
+HashMap<Character, List<String>> korBrailleDB = new HashMap<Character, List<String>>();   // 
+HashMap<Character, List<String>> korBrailleDB2 = new HashMap<Character, List<String>>();  //
 HashMap<Character, String> otherChars = new HashMap<Character, String>();
 HashMap<Character, String> CONTRACTIONS = new HashMap<Character, String>();
 
@@ -53,7 +53,7 @@ void init()
   korBrailleDB.put('ㄲ', Arrays.asList("⠈", "⠁"));
   korBrailleDB.put('ㄸ', Arrays.asList("⠊", "⠔"));
   korBrailleDB.put('ㅃ', Arrays.asList("⠘", "⠃"));
-  korBrailleDB.put('ㅆ', Arrays.asList("⠠", "⠄"));
+  korBrailleDB.put('ㅆ', Arrays.asList("⠠", "⠄")); 
   korBrailleDB.put('ㅉ', Arrays.asList("⠨", "⠅"));
 
   korBrailleDB2.put('ㅏ', Arrays.asList("⠣", "-"));
@@ -120,13 +120,15 @@ void init()
   CONTRACTIONS.put('은', "⠵");
 }
 
-boolean containsChar(char[] array, char target) {
-  for (char c : array) {
+// Helper function that checks whether a char is in an array
+boolean containsChar(char[] array, char target) 
+{
+  for (char c : array) 
+  {
     if (c == target) return true;
   }
   return false;
 }
-
 
 // This function converts a Braille dot pattern to its corresponding one-byte code
 String convertBDotTo1ByteCodeKOR (String bDot) // this function converts a Braille dot pattern to its corresponding one-byte code
@@ -136,72 +138,72 @@ String convertBDotTo1ByteCodeKOR (String bDot) // this function converts a Brail
 }
 
 // This function decomposes an entire Hanguel text string into its individual components
-// and returns a string representation of the decomposed text
-String[] decompose(String inputString)
+// and returns the braille dot representation of the decomposed text
+String decompose(String inputString)
 {
-  String markers = ""; String decomposedString = "";
+  String decomposedString = "";
   for (int i = 0; i < inputString.length(); i++)
   {
     char ch = inputString.charAt(i);
+
     if (ch >= 0xAC00 && ch <= 0xD7A3) // if a Hanguel syllable
     {
       if (CONTRACTIONS.containsKey(ch))
       {
         decomposedString += CONTRACTIONS.get(ch); // appending the Braille Dot pattern
         //markers += 'O'; 
+        continue;
       }
-      else
+
+      int syllableIndex = ch - 0xAC00;
+      int choeseongIndex = syllableIndex / (21 * 28);
+      int jungseongIndex = (syllableIndex % (21 * 28)) / 28;
+      int jongseongIndex = syllableIndex % 28;
+
+      char choeseong = CHOESEONG[choeseongIndex];
+      char jungseong = JUNGSEONG[jungseongIndex];
+      char jongseong = JONGSEONG[jongseongIndex];
+
+      // appending the choeseong
+      if (korBrailleDB.containsKey(choeseong) && choeseong != 'ㅇ')
       {
-        int syllableIndex = ch - 0xAC00;
-        int choeseongIndex = syllableIndex / (21 * 28);
-        int jungseongIndex = (syllableIndex % (21 * 28)) / 28;
-        int jongseongIndex = syllableIndex % 28;
-
-        char choeseong = CHOESEONG[choeseongIndex];
-        char jungseong = JUNGSEONG[jungseongIndex];
-        char jongseong = JONGSEONG[jongseongIndex];
-
-        // appending the choeseong
-        if (korBrailleDB.containsKey(choeseong) && choeseong != 'ㅇ')
+        if (containsChar(doubleConsonants, choeseong))
         {
-          if (containsChar(doubleConsonants, choeseong))
-          {
-            decomposedString += "⠠" + korBrailleDB.get(choeseong).get(0); 
-            markers += "CC";
-          }
-          else
-          {
-            decomposedString += korBrailleDB.get(choeseong).get(0);
-            markers += str('C');
-          }
+          decomposedString += "⠠" + korBrailleDB.get(choeseong).get(0); 
+          //markers += "CC";
         }
-        // appending the jungseong
-        if (korBrailleDB2.containsKey(jungseong))
+        else
         {
-          if (korBrailleDB2.get(jungseong).get(1) != "-")
-          {
-            decomposedString += korBrailleDB2.get(jungseong).get(0) + korBrailleDB2.get(jungseong).get(1);
-            markers += "jj";
-          }
-          else
-          {
-            decomposedString += korBrailleDB2.get(jungseong).get(0);
-            markers += str('j');
-          }
+          decomposedString += korBrailleDB.get(choeseong).get(0);
+          //markers += str('C');
         }
-        // appending the jongseong
-        if (korBrailleDB.containsKey(jongseong) && jongseong != '\0')
+      }
+      // appending the jungseong
+      if (korBrailleDB2.containsKey(jungseong))
+      {
+        if (korBrailleDB2.get(jungseong).get(1) != "-")
         {
-          if (containsChar(doubleConsonants, jongseong))
-          {
-            decomposedString += "⠠" + korBrailleDB.get(jongseong).get(1);
-            markers += "JJ";
-          }
-          else
-          {
-            decomposedString += korBrailleDB.get(jongseong).get(1);
-            markers += str('J');
-          }
+          decomposedString += korBrailleDB2.get(jungseong).get(0) + korBrailleDB2.get(jungseong).get(1);
+          //markers += "jj";
+        }
+        else
+        {
+          decomposedString += korBrailleDB2.get(jungseong).get(0);
+          //markers += str('j');
+        }
+      }
+      // appending the jongseong
+      if (korBrailleDB.containsKey(jongseong) && jongseong != '\0')
+      {
+        if (containsChar(doubleConsonants, jongseong))
+        {
+          decomposedString += "⠠" + korBrailleDB.get(jongseong).get(1);
+          //markers += "JJ";
+        }
+        else
+        {
+          decomposedString += korBrailleDB.get(jongseong).get(1);
+          //markers += str('J');
         }
       }
     }
@@ -228,7 +230,7 @@ String[] decompose(String inputString)
       }
     }
   }
-  return  new String[] {decomposedString, markers};
+  return decomposedString;
 }
 
 String bUnicodesStringKOR (String group, int spacesLeft, int spacesRight)
@@ -255,135 +257,3 @@ String bUnicodesStringKOR (String group, int spacesLeft, int spacesRight)
   }
   return result.toString();
 }
-
-/*String bUnicodesStringKOR (String group, String markerString, int startIndex, int endIndex, int spacesLeft, int spacesRight)
-{
-  // Extract markers for the current group
-  String filteredMarkersString = markerString.substring(startIndex, endIndex); 
-  char[] originalMarkersArray = filteredMarkersString.toCharArray();
-  
-  // Pad the markers array with 'O' (non-Hangul) on both sides
-  int paddedLength = spacesLeft + originalMarkersArray.length + spacesRight;
-  char[] markersArray = new char[paddedLength];
-  for (int i = 0; i < spacesLeft; i++) markersArray[i] = 'O';
-  for (int i = 0; i < originalMarkersArray.length; i++) markersArray[spacesLeft + i] = originalMarkersArray[i];
-  for (int i = spacesLeft + originalMarkersArray.length; i < paddedLength; i++) markersArray[i] = 'O';
-
-  // Pad the decomposed group with spaces (matching marker padding)
-  char[] originalChars = group.toCharArray();
-  char[] decomposedArray = new char[paddedLength];
-  for (int i = 0; i < spacesLeft; i++) decomposedArray[i] = ' '; // space padding
-  for (int i = 0; i < originalChars.length; i++) decomposedArray[spacesLeft + i] = originalChars[i];
-  for (int i = spacesLeft + originalChars.length; i < paddedLength; i++) decomposedArray[i] = ' ';
-
-  StringBuilder result = new StringBuilder(); // StringBuilder objects are mutable, allowing for modifications
-  
-  for (int i = 0; i < decomposedArray.length; i++)
-  {
-    char ch = decomposedArray[i]; // Get the character which is either a choeseong, jungseong, or jongseong
-
-    if (markersArray[i] != 'O')
-    {
-      result.append(convertBDotTo1ByteCodeKOR(str(ch)));
-    }
-    else 
-    {
-      if (decomposedArray[i] == ' ')
-      {
-        result.append("00");
-      }
-      else if (Character.isDigit(decomposedArray[i]))
-      {
-        if (i == 0 || !Character.isDigit(decomposedArray[i - 1])) // putting the numeric marker only once
-        {
-          result.append(convertBDotTo1ByteCodeKOR("⠼"));
-        }
-        result.append(convertBDotTo1ByteCodeKOR(otherChars.get(decomposedArray[i])));
-      }
-      else if (otherChars.containsKey(decomposedArray[i]))
-      {
-        result.append(convertBDotTo1ByteCodeKOR(otherChars.get(decomposedArray[i])));
-      }
-      else if (CONTRACTIONS.containsKey(decomposedArray[i]))
-      {
-        result.append(convertBDotTo1ByteCodeKOR(CONTRACTIONS.get(decomposedArray[i])));
-      }
-      else
-      {
-        result.append("00");
-      }
-    }
-  }
-  return result.toString(); // Convert StringBuilder to String and return the resulting string
-
-
-
-
-
-    // if (markersArray[i] == 'C') // if the next character is 'C', it is a choeseong. We don't need to check whether choeseong is the voiceless circle as decompose() already handles that
-    // {
-    //   for (int j = 0; j < korBrailleDB.length; j++)
-    //   {
-    //     if (korBrailleDB[j][0].equals(hex(ch)))
-    //     {
-    //       result.append(convertBDotTo1ByteCodeKOR(korBrailleDB[j][1])); // Append the Braille representation of the choeseong
-    //       break;
-    //     }
-    //   }
-    // }
-    // else if (markersArray[i] == 'J') // if the next character is 'J', its a jongseong. We don't need to check whether jongseong is not present as decompose() already handles that
-    // {
-    //   for (int j = 0; j < korBrailleDB.length; j++)
-    //   {
-    //     if (korBrailleDB[j][0].equals(hex(ch)))
-    //     {
-    //       result.append(convertBDotTo1ByteCodeKOR(korBrailleDB[j][2])); // Append the Braille representation of the jongseong
-    //       break;
-    //     }
-    //   }
-    // }
-    // else if (markersArray[i] == 'j') // if the next character is 'j', its a jungseong
-    // {
-    //   for (int j = 0; j < korBrailleDB2.length; j++)
-    //   {
-    //     if (korBrailleDB2[j][0].equals(hex(ch)))
-    //     {
-    //       result.append(convertBDotTo1ByteCodeKOR(korBrailleDB2[j][1])); // Append the Braille representation of the jungseong
-    //       if (!korBrailleDB2[j][2].equals("-")) // If there is a second part of the jungseong
-    //       {
-    //         result.append(convertBDotTo1ByteCodeKOR(korBrailleDB2[j][2])); // Append the second part of the jungseong
-    //       }
-    //       break;
-    //     }
-    //   }
-    // }
-    else if (markersArray[i] == 'O') // if the next character is 'O', its a non-Hanguel character
-    {
-      if (decomposedArray[i] == ' ')
-      {
-        result.append("00");
-      }
-      else if (Character.isDigit(decomposedArray[i]))
-      {
-        if (i == 0 || !Character.isDigit(decomposedArray[i - 1])) // putting the numeric marker only once
-        {
-          result.append(convertBDotTo1ByteCodeKOR("⠼"));
-        }
-        result.append(convertBDotTo1ByteCodeKOR(otherChars.get(decomposedArray[i])));
-      }
-      else if (otherChars.containsKey(decomposedArray[i]))
-      {
-        result.append(convertBDotTo1ByteCodeKOR(otherChars.get(decomposedArray[i])));
-      }
-      else if (CONTRACTIONS.containsKey(decomposedArray[i]))
-      {
-        result.append(convertBDotTo1ByteCodeKOR(CONTRACTIONS.get(decomposedArray[i])));
-      }
-      else
-      {
-        result.append("00");
-      }
-    }
-  }
-  return result.toString(); // Convert StringBuilder to String and return the resulting string
-}*/
