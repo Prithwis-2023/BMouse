@@ -139,10 +139,9 @@ void serialRead()
 {
   char incomingChar = Serial.read();
 
-  if (incomingChar == 'E')
+  if (incomingChar == '$')
   {
-    language = incomingChar;
-    languageSet = true;
+    display.clear();
   }
   if (incomingChar == '*' || incomingChar == '#' || incomingChar == '^')
   {
@@ -164,11 +163,8 @@ void serialRead()
     }
     else
     {
-      processBrailleGroup(receivedData, incomingChar, language);
+      processBrailleGroup(receivedData, incomingChar);
     }
-
-    language = '\0';
-    languageSet = false;
   }
   else
   {
@@ -191,11 +187,11 @@ char isNumericandReplace(char c)
 }
 
 // process the data and display on the cells
-void processBrailleGroup(String group, char c, char lang)
+void processBrailleGroup(String group, char c)
 {
   int groupLength = group.length(); 
 
-  if (lang == 'E' && c == '@') // end marker for character grouping feature
+  if (c == '@') // end marker for character grouping feature
   {
     for (int i = 0; i < groupLength; i++)
     {
@@ -212,7 +208,7 @@ void processBrailleGroup(String group, char c, char lang)
       }
     }
   }
-  else if (lang == 'E' && c == '+') // end marker for sliding window feature
+  else if (c == '+') // end marker for sliding window feature
   {
     int middleIndex = (groupLength - 1) / 2;
 

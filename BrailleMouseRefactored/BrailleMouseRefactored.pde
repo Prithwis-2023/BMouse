@@ -5,10 +5,12 @@ import processing.sound.*;
 
 // create enums for the text display modes and the features
 enum Language {English, Korean}; 
-enum Feature {charGrouping, wordGrouping, slidingWindow}; 
+enum Feature {charGrouping, wordGrouping, slidingWindow}; // create an enum for the features
+enum textMode {plainTextMode, fileMode}; // create an enum for the mode of text, either plain text or extraction from a txt file
 enum textDisplayMode {buttonMode, normalMode}; // create an enum for the text display modes
-Language defaultLanguage = Language.Korean; // default language
-Feature defaultFeature = Feature.wordGrouping; // default feature
+Language defaultLanguage = Language.English; // default language
+Feature defaultFeature = Feature.charGrouping; // default feature
+textMode defaultTextMode = textMode.plainTextMode; // default text mode
 textDisplayMode defaultDisplayMode = textDisplayMode.normalMode; // default text display mode
 
 // constants
@@ -21,13 +23,16 @@ textDisplayMode defaultDisplayMode = textDisplayMode.normalMode; // default text
 final int defaultCharGrouping_FREQ = 5;  // character group frequency for charGrouping feature
 final int defaultSlidingWindow_FREQ = 8;  // sliding window frequency for slidingWindow feature. Can be 1, 3, 5 or 8
 
-
+/* Text and Languages Related */
 int textIndex = 0; // index for the lines of the sample text
+int randIndex = 0; // random start index in case of the file mode. Same for the korean file mode
 String DTEXT = "This is it. \n The fight of our lives and we're going to win. Bla Bla Black Sheep have you any wool.\n Whatever it takes. \n And Hello World!";  // custom text
-String korDTEXT = "안녕하세요 반갑습니다 각"; // custom Korean text
+String korDTEXT = "시계가 물에 빠졌다. 123"; // custom Korean text
 String markersString = ""; // markers for the Korean text
 
-String[] lines;
+String[] lines;            // holds the lines to be sent for processing
+String[] engLinesFromFile; // used for holding the random lines extracted from the english text file
+String[] korLinesFromFile; // used for holding the random lines extracted from the korean text file
 
 // Sound
 SoundFile EOLBeep; 
@@ -39,7 +44,6 @@ boolean isBeyondTopnBottom = false;
 // Serial Port
 Serial myPort;
 String portName = Serial.list()[0];  // default port
-
 
 // GUI
 LazyGui gui;
@@ -69,10 +73,11 @@ void settings()
   size(1920, 1080, P2D); 
 }
 
-// Setup function - GUI, Serial, Sound
+// Setup function - GUI, Serial, Sound and function calls from language based processing files
 void setup()
 {
-  //fullScreen(P2D); // set the window to full screen
+  init();  // utilized for Korean Language, this function puts all the key value pairs into the hash maps
+
   surface.setResizable(true);
 
   // Initialize LazyGui
@@ -82,6 +87,8 @@ void setup()
   ); 
   
   myPort = new Serial(this, portName, 9600);
+  delay(500);                                 // Allow Arduino to finish resetting after serial opens
+  clearBrailleCells();                        // Send a clear command right every time afer connecting
   
   EOLBeep = new SoundFile(this, "endOfLineBeep.mp3");
   COLBeep = new SoundFile(this, "ChangeOfLine.mp3");
@@ -89,25 +96,49 @@ void setup()
   
   fontEnglish = createFont("MapleMono-SemiBold.otf", 32);
   fontKorean = createFont("Noto Sans CJK KR", 32);
+
+  engLinesFromFile = loadStrings("textENG.txt");
+  korLinesFromFile = loadStrings("textKOR2.txt");
+  for (int i = 0; i < korLinesFromFile.length; i++)
+  {
+    korLinesFromFile[i] = decompose(korLinesFromFile[i]);
+  }
+  randIndex = int(random(Math.min(korLinesFromFile.length, engLinesFromFile.length) - 9)); // because we want 10 lines, so we need to subtract. We don't need another one for the korean mode
 }
 
-// function to send the group to the Arduino
-void sendToBrailleGroup(String group, String startMarker, String endMarker, String markerString, int startIndex, int endIndex, int spacesLeft, int spacesRight)
+// clearing all the cells upon killing the program
+void exit() 
+{
+  clearBrailleCells();
+  super.exit();         // super.exit() to ensure the sketch closes
+}
+
+
+// function to clear all the cells before reading starts
+void clearBrailleCells() 
+{
+  String clearSignal = "$";  // or any special symbol you agreed on with Arduino
+  myPort.clear();            // flush any garbage bytes before sending clear
+  delay(100);
+  myPort.write(clearSignal);
+}
+
+// function to send the group to the Arduino.
+void sendToBrailleGroup(String group, String startMarker, String endMarker, int spacesLeft, int spacesRight)
 {
   if (myPort != null)
   {
     if (defaultLanguage == Language.English)
     {
-      String groupSent = 'E' + startMarker + group + endMarker;
-      myPort.write(groupSent);
-      println("Sent to Arduino: " + groupSent); // Debugging output
+      String brailleString = startMarker + bUnicodesStringENG(group, spacesLeft, spacesRight) + endMarker;
+      myPort.write(brailleString);
+      println("Sent to Arduino ENG: " + brailleString); // Debugging output
     }
     else if (defaultLanguage == Language.Korean)
     {
-      String brailleString = 'K' + startMarker + bUnicodesString(group, markerString, startIndex, endIndex, spacesLeft, spacesRight) + endMarker;
+      String brailleString = startMarker + bUnicodesStringKOR(group, spacesLeft, spacesRight) + endMarker;
       myPort.write(brailleString); // send the braille string to the Arduino
-      //delay(50);
-      println("Sent to Arduino: " + brailleString); // Debugging output
+      println("Sent to Arduino KOR: " + brailleString); // Debugging output
     }
   }
   else
@@ -248,8 +279,7 @@ void draw()
   else if (lang.equals("Korean"))
   {
     defaultLanguage = Language.Korean;
-    DTEXT = decompose(korDTEXT)[0]; // decompose the Korean text
-    markersString = decompose(korDTEXT)[1];
+    DTEXT = decompose(korDTEXT); // decompose the Korean text
     textFont(fontKorean);
   }
 
@@ -266,10 +296,6 @@ void draw()
   else if (displayMode.equals("Normal Mode"))
   {
     defaultDisplayMode = textDisplayMode.normalMode;
-  }
-  else
-  {
-    defaultDisplayMode = defaultDisplayMode;
   }
 
   // GUI for the Feature Selection
@@ -294,21 +320,54 @@ void draw()
     defaultFeature = Feature.slidingWindow;
   }
 
-
-  // Handle the text input 
-  userInput = DTEXT; // display the text in the center of the screen
-  gui.text("Text/Input", DTEXT);
-
   // Text Settings
   float extraSpacing = gui.sliderInt("Text Settings/Line Spacing", 10);
   float textSizeVal = gui.sliderInt("Text Settings/Text Size", 32);
   float boxHeightVal = gui.sliderInt("Text Settings/Box Height", 0);
   float margin = gui.sliderInt("Text Settings/ Margin", 100);
 
+  // Handle the text input
+  String text = gui.radio(
+    "Text/Mode",
+    new String[] {"Plain Text", "File"},
+    defaultTextMode == textMode.plainTextMode ? "Plain Text" : "File"
+  );
+  if (text.equals("Plain Text"))
+  {
+    defaultTextMode = textMode.plainTextMode;
+  }
+  else if (text.equals("File"))
+  {
+    defaultTextMode = textMode.fileMode;
+  }
+  
+  if (defaultTextMode == textMode.plainTextMode)
+  {
+    userInput = DTEXT; // display the text in the center of the screen
+    gui.text("Text/Input", DTEXT);
+    // Transformation of the text into lines
+    float maxWidth = width - 2 * margin;
+    lines = wrapText(userInput, maxWidth);
+  }
+  else if (defaultTextMode == textMode.fileMode)
+  {
+    lines = new String[10];
+    if (defaultLanguage == Language.English)
+    {
+      arrayCopy(engLinesFromFile, randIndex, lines, 0, 10); // arrayCopy(src, srcPos, dest, destPos, length)
+    }
+    else if (defaultLanguage == Language.Korean)
+    {
+      arrayCopy(korLinesFromFile, randIndex, lines, 0, 10); // arrayCopy(src, srcPos, dest, destPos, length)
+      //println(lines);
+      String decomposed = decompose(lines[0]); 
+      DTEXT = decomposed; // update text for display
+    }
+  }
 
-  // Transformation of the text into lines
-  float maxWidth = width - 2 * margin;
-  lines = wrapText(userInput, maxWidth);
+  // // Transformation of the text into lines
+  // float maxWidth = width - 2 * margin;
+  // lines = wrapText(userInput, maxWidth);
 
   // Text Formatting 
   fill (255);                   // set the text colot to white
@@ -480,7 +539,7 @@ void charGroupingFeature(String line, int frequency, float margin, float lineTop
     {
       if (!group.equals(lastSentGroup))
       {
-        sendToBrailleGroup(group, "*", "@", markersString, j, endIndex, 0, 0); // send the group to the Arduino
+        sendToBrailleGroup(group, "*", "@", 0, 0); // send the group to the Arduino
         lastSentGroup = group; // update the last sent group
       }
     }
@@ -586,16 +645,9 @@ void slidingWindowFeature(String line, int frequency, float margin, float lineTo
           groupArray[pos] = tempGroup.charAt(pos); // fill the array with the characters  
         }
       }
-      // calculate the number of spaces to the right (if any)
-      for (int i = 0; i < groupArray.length; i++)
-      {
-        if (groupArray[i] == ' ')
-        {
-          spacesRight += 1;
-        }
-      }
     }
 
+    spacesRight = groupArray.length - spacesLeft - tempGroup.length();
     group = String.valueOf(groupArray); // convert the character array to a string
 
     // If the Edge case is active, prevent the text overflow by adjusting the drawing x-coordinate, which is the position of the character in the line
@@ -619,7 +671,7 @@ void slidingWindowFeature(String line, int frequency, float margin, float lineTo
       {
         if (!group.equals(lastSentGroup)) // send only if this is a new group
         {
-          sendToBrailleGroup(group, "#", "+", markersString, startIndex, endIndex, spacesLeft, spacesRight); // send the group to the Arduino
+          sendToBrailleGroup(tempGroup, "#", "+", spacesLeft, spacesRight); // send the group to the Arduino
           lastSentGroup = group; // update the last sent group
         }
       }
@@ -659,7 +711,7 @@ void wordGroupingFeature(String line, float margin, float lineTopEnd, float line
     {
       if (!word.equals(lastSentGroup))
       {
-        sendToBrailleGroup(word, "^", "|",  markersString, startIndex, endIndex, 0, 0); // send the group to the Arduino
+        sendToBrailleGroup(word, "^", "|", 0, 0); // send the group to the Arduino
         lastSentGroup = word; // update the last sent group
       }
     }
