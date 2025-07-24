@@ -90,19 +90,25 @@ void setup()
   delay(500);                                 // Allow Arduino to finish resetting after serial opens
   clearBrailleCells();                        // Send a clear command right every time afer connecting
   
+  // Load sound files
   EOLBeep = new SoundFile(this, "endOfLineBeep.mp3");
   COLBeep = new SoundFile(this, "ChangeOfLine.mp3");
   TopandBottomBeep = new SoundFile(this, "endOfLineBeep.mp3");
   
+  // Load fonts for English and Korean
   fontEnglish = createFont("MapleMono-SemiBold.otf", 32);
   fontKorean = createFont("Noto Sans CJK KR", 32);
 
+  // Load the sample text for English and Korean from files
   engLinesFromFile = loadStrings("textENG.txt");
   korLinesFromFile = loadStrings("textKOR2.txt");
+
+  // Decompose the Korean lines from the file
   for (int i = 0; i < korLinesFromFile.length; i++)
   {
     korLinesFromFile[i] = decompose(korLinesFromFile[i]);
   }
+  // Randomly select a starting index for the lines from the file
   randIndex = int(random(Math.min(korLinesFromFile.length, engLinesFromFile.length) - 9)); // because we want 10 lines, so we need to subtract. We don't need another one for the korean mode
 }
 
@@ -390,7 +396,8 @@ void draw()
 
     currentLineIndex = textIndex; // set the current line index to the text index
     String currentLine = lines[textIndex]; // get the current line
-
+    DTEXT = currentLine; // update the text for display
+    
     if (defaultFeature == Feature.charGrouping)
     {
       charGroupingFrequency = gui.sliderInt("Braille Settings/Character Grouping Frequency", defaultCharGrouping_FREQ, 1, 8); // set the character grouping frequency
