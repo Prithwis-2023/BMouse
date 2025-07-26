@@ -28,10 +28,10 @@ final char[] doubleConsonants =
 };
 
 
-HashMap<Character, List<String>> korBrailleDB = new HashMap<Character, List<String>>();   // 
-HashMap<Character, List<String>> korBrailleDB2 = new HashMap<Character, List<String>>();  //
-HashMap<Character, String> otherChars = new HashMap<Character, String>();
-HashMap<Character, String> CONTRACTIONS = new HashMap<Character, String>();
+HashMap<Character, List<String>> korBrailleDB = new HashMap<Character, List<String>>();  // for cheoseong and jongseong
+HashMap<Character, List<String>> korBrailleDB2 = new HashMap<Character, List<String>>();  // for jungseong
+HashMap<Character, String> otherChars = new HashMap<Character, String>(); // for punctuations and numerals
+HashMap<Character, String> CONTRACTIONS = new HashMap<Character, String>(); // for contractions
 
 void init()
 {

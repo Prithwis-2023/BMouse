@@ -4,7 +4,7 @@ import processing.serial.*;
 import processing.sound.*;
 
 // create enums for the text display modes and the features
-enum Language {English, Korean}; 
+enum Language {English, Korean, Español};  // create an enum for the languages
 enum Feature {charGrouping, wordGrouping, slidingWindow}; // create an enum for the features
 enum textMode {plainTextMode, fileMode}; // create an enum for the mode of text, either plain text or extraction from a txt file
 enum textDisplayMode {buttonMode, normalMode}; // create an enum for the text display modes
@@ -26,13 +26,16 @@ final int defaultSlidingWindow_FREQ = 8;  // sliding window frequency for slidin
 /* Text and Languages Related */
 int textIndex = 0; // index for the lines of the sample text
 int randIndex = 0; // random start index in case of the file mode. Same for the korean file mode
-String DTEXT = "This is it. \n The fight of our lives and we're going to win. Bla Bla Black Sheep have you any wool.\n Whatever it takes. \n And Hello World!";  // custom text
+String DTEXT; // the text to be displayed
+String engDTEXT = "This is it. \n The fight of our lives and we're going to win. Bla Bla Black Sheep have you any wool.\n Whatever it takes. \n And Hello World!";  // custom text
 String korDTEXT = "시계가 물에 빠졌다. 123"; // custom Korean text
-String markersString = ""; // markers for the Korean text
+String esDTEXT = "En el otoño, quiero te ver con las johas que caen. \n La luna llena brilla en el cielo. \n ¡Hola Mundo!"; // custom Spanish text
+//String markersString = ""; // markers for the Korean text
 
 String[] lines;            // holds the lines to be sent for processing
 String[] engLinesFromFile; // used for holding the random lines extracted from the english text file
 String[] korLinesFromFile; // used for holding the random lines extracted from the korean text file
+String[] esLinesFromFile;  // used for holding the random lines extracted from the spanish text file
 
 // Sound
 SoundFile EOLBeep; 
@@ -145,6 +148,12 @@ void sendToBrailleGroup(String group, String startMarker, String endMarker, int 
       String brailleString = startMarker + bUnicodesStringKOR(group, spacesLeft, spacesRight) + endMarker;
       myPort.write(brailleString); // send the braille string to the Arduino
       println("Sent to Arduino KOR: " + brailleString); // Debugging output
+    }
+    else if (defaultLanguage == Language.Español)
+    {
+      String brailleString = startMarker + bUnicodesStringES(group, spacesLeft, spacesRight) + endMarker;
+      myPort.write(brailleString); // send the braille string to the Arduino
+      println("Sent to Arduino ESP: " + brailleString); // Debugging output
     }
   }
   else
@@ -273,13 +282,15 @@ void draw()
   // GUI for Language Selection
   String lang = gui.radio(
     "Language",
-    new String[] {"English", "Korean"},
-    defaultLanguage == Language.English ? "English" : "Korean"
+    new String[] {"English", "Korean", "Español"},
+    defaultLanguage == Language.English ? "English" : 
+    defaultLanguage == Language.Korean ? "Korean" : 
+    "Español"
   );
   if (lang.equals("English"))
   {
     defaultLanguage = Language.English;
-    DTEXT = "This is it. \n The fight of our lives and we're going to win. Bla Bla Black Sheep have you any wool.\n Whatever it takes. \n And Hello World!";
+    DTEXT = engDTEXT; // set the English text
     textFont(fontEnglish);
   }
   else if (lang.equals("Korean"))
@@ -288,7 +299,12 @@ void draw()
     DTEXT = decompose(korDTEXT); // decompose the Korean text
     textFont(fontKorean);
   }
-
+  else if (lang.equals("Español"))
+  {
+    defaultLanguage = Language.Español;
+    DTEXT = esDTEXT; // set the Spanish text
+    textFont(fontEnglish); // use the English font for Spanish as well
+  }
   // GUI for the Display Mode
   String displayMode = gui.radio(
     "Text Display/Mode",
