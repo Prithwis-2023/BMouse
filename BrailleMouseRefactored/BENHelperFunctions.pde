@@ -1,6 +1,6 @@
 import java.util.*;
 import java.util.regex.*;
-
+String text = "আমি বাংলা ভালোবাসি। এটি ১২ / ০৪ / ২০২১ তারিখে লেখা।";
 HashMap <Character, String> brailleMap = new HashMap<Character, String>()
 {{
     put('ঁ', "⠄");
