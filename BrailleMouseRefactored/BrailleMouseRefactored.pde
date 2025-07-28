@@ -33,11 +33,13 @@ String engDTEXT = "This is it. \n The fight of our lives and we're going to win.
 String korDTEXT = "시계가 물에 빠졌다. \n 동쪽에서 불어오는 강한 바람. \n 숨쉬기 힘들다. 123"; // custom Korean text
 String benDTEXT = "বাংলা ভাষা একটি সুন্দর ভাষা। \n এটি আমাদের মাতৃভাষা। \n বাংলা ভাষায় অনেক সাহিত্য আছে।"; // custom Bengali text
 String esDTEXT = "En el otoño, quiero te ver con las johas que caen. \n La luna llena brilla en el cielo. \n ¡Hola Mundo!"; // custom Spanish text
-String texKOR;
 
-String[] lines; String[] linesForDisplayKOR;  // holds the lines to be sent for processing
+String texKOR; // the text to be displayed in the text box for the Korean language (used in the korean file mode)
+
+String[] lines; // holds the lines to be sent for processing
+String[] linesForDisplayKOR;  // hold the lines to be displayed for the Korean text into the textbox
 String[] engLinesFromFile; // used for holding the random lines extracted from the english text file
-String[] korLinesFromFile; String[] korLinesFromFileDots; String[] korLinesFromFilePlain; // used for holding the random lines extracted from the korean text file
+String[] korLinesFromFile; String[] korLinesFromFileDots; // used for holding the random lines extracted from the korean text file
 String[] esLinesFromFile;  // used for holding the random lines extracted from the spanish text file
 
 // Sound
@@ -108,14 +110,12 @@ void setup()
   // Load the sample text for English and Korean from files
   engLinesFromFile = loadStrings("textENG.txt");
   korLinesFromFile = loadStrings("textKOR2.txt");
-  korLinesFromFileDots = new String[korLinesFromFile.length]; // array to hold the braille dots for the Korean lines from the file
-  korLinesFromFilePlain = new String[korLinesFromFile.length]; // array to hold the plain text for the Korean lines from the file
+  korLinesFromFileDots = new String[korLinesFromFile.length]; // array to hold the braille dots patterns for the Korean lines from the file
 
-  // Decompose the Korean lines from the file
+  // Decompose the Korean lines from the file in the braille dot
   for (int i = 0; i < korLinesFromFile.length; i++)
   {
-    korLinesFromFileDots[i] = decompose(korLinesFromFile[i])[0];
-    korLinesFromFilePlain[i] = decompose(korLinesFromFile[i])[1]; 
+    korLinesFromFileDots[i] = decompose(korLinesFromFile[i]);
 
   }
   // Randomly select a starting index for the lines from the file
@@ -285,48 +285,14 @@ void draw()
 {  
   // Background color adjustment
   background(gui.colorPicker("Background/Color").hex);
-  
-  // GUI for Language Selection
-  String lang = gui.radio(
-    "Language",
-    new String[] {"English", "Korean", "Español"},
-    defaultLanguage == Language.English ? "English" : 
-    defaultLanguage == Language.Korean ? "Korean" : 
-    "Español"
-  );
-  if (lang.equals("English"))
-  {
-    defaultLanguage = Language.English;
-    DTEXT = engDTEXT; // set the English text
-    textFont(fontEnglish);
-  }
-  else if (lang.equals("Korean"))
-  {
-    defaultLanguage = Language.Korean;
-    DTEXT = decompose(korDTEXT)[0]; // decompose the Korean text
-    textFont(fontKorean);
-  }
-  else if (lang.equals("Español"))
-  {
-    defaultLanguage = Language.Español;
-    DTEXT = esDTEXT; // set the Spanish text
-    textFont(fontEnglish); // use the English font for Spanish as well
-  }
-  // GUI for the Display Mode
-  String displayMode = gui.radio(
-    "Text Display/Mode",
-    new String[] {"Button Mode", "Normal Mode"},
-    defaultDisplayMode == textDisplayMode.normalMode ? "Normal Mode" : "Button Mode"
-  );
-  if (displayMode.equals("Button Mode"))
-  {
-    defaultDisplayMode = textDisplayMode.buttonMode;
-  }
-  else if (displayMode.equals("Normal Mode"))
-  {
-    defaultDisplayMode = textDisplayMode.normalMode;
-  }
 
+  // Text Settings
+  float extraSpacing = gui.sliderInt("Text Settings/Line Spacing", 10);
+  float textSizeVal = gui.sliderInt("Text Settings/Text Size", 32);
+  float boxHeightVal = gui.sliderInt("Text Settings/Box Height", 0);
+  float margin = gui.sliderInt("Text Settings/ Margin", 100);
+  float maxWidth = width - 2 * margin;
+  
   // GUI for the Feature Selection
   String feature = gui.radio(
   "Braille Settings/Feature",
@@ -349,13 +315,34 @@ void draw()
     defaultFeature = Feature.slidingWindow;
   }
 
-  // Text Settings
-  float extraSpacing = gui.sliderInt("Text Settings/Line Spacing", 10);
-  float textSizeVal = gui.sliderInt("Text Settings/Text Size", 32);
-  float boxHeightVal = gui.sliderInt("Text Settings/Box Height", 0);
-  float margin = gui.sliderInt("Text Settings/ Margin", 100);
-
-  // Handle the text input
+  // GUI for Language Selection
+  String lang = gui.radio(
+    "Language",
+    new String[] {"English", "Korean", "Español"},
+    defaultLanguage == Language.English ? "English" : 
+    defaultLanguage == Language.Korean ? "Korean" : 
+    "Español"
+  );
+  if (lang.equals("English"))
+  {
+    defaultLanguage = Language.English;
+    DTEXT = engDTEXT; // set the English text
+    textFont(fontEnglish);
+  }
+  else if (lang.equals("Korean"))
+  {
+    defaultLanguage = Language.Korean;
+    DTEXT = decompose(korDTEXT); // decompose the Korean text
+    textFont(fontKorean);
+  }
+  else if (lang.equals("Español"))
+  {
+    defaultLanguage = Language.Español;
+    DTEXT = esDTEXT; // set the Spanish text
+    textFont(fontEnglish); // use the English font for Spanish as well
+  }
+  
+  // GUI for Text mode
   String text = gui.radio(
     "Text/Mode",
     new String[] {"Plain Text", "File"},
@@ -364,27 +351,18 @@ void draw()
   if (text.equals("Plain Text"))
   {
     defaultTextMode = textMode.plainTextMode;
+    userInput = DTEXT;                     // set the user input to the default text
+    lines = wrapText(userInput, maxWidth); // Transformation of the text into lines
+    // create a text box for the Korean text for illustrative purposes because we are processing the braille dots for this language
+    if (defaultLanguage == Language.Korean)
+    {
+      createTextBox(korDTEXT, 400, 40); 
+      linesForDisplayKOR = wrapText(korDTEXT, maxWidth);
+    }
   }
   else if (text.equals("File"))
   {
     defaultTextMode = textMode.fileMode;
-  }
-  
-  if (defaultTextMode == textMode.plainTextMode)
-  {
-    userInput = DTEXT; // display the text in the center of the screen
-    // Transformation of the text into lines
-    float maxWidth = width - 2 * margin;
-    lines = wrapText(userInput, maxWidth);
-
-    if (defaultLanguage == Language.Korean)
-    {
-      createTextBox(decompose(korDTEXT)[1], 400, 40); // create a text box for the Korean text because we are processing the braille dots for this language
-      linesForDisplayKOR = wrapText(decompose(korDTEXT)[1], maxWidth);
-    }
-  }
-  else if (defaultTextMode == textMode.fileMode)
-  {
     lines = new String[10];
     if (defaultLanguage == Language.English)
     {
@@ -392,15 +370,19 @@ void draw()
     }
     else if (defaultLanguage == Language.Korean)
     {
+      linesForDisplayKOR = new String[10]; // reinitialize the array for the Korean lines to hold  10 lines
       arrayCopy(korLinesFromFileDots, randIndex, lines, 0, 10); // arrayCopy(src, srcPos, dest, destPos, length)
-      arrayCopy(korLinesFromFilePlain, randIndex, linesForDisplayKOR, 0, 10); // arrayCopy(src, srcPos, dest, destPos, length)
+      arrayCopy(korLinesFromFile, randIndex, linesForDisplayKOR, 0, 10); // arrayCopy(src, srcPos, dest, destPos, length)
       texKOR = String.join(" \n ", linesForDisplayKOR); // join the lines with a newline character
       createTextBox(texKOR, 400, 40); // create a text box
     }
   }
 
-  // Text Formatting 
-  fill (255);                   // set the text colot to white
+  // GUI for the Pointer Mode
+  String pointerMode = gui.radio("Pointer/Mode", new String[] {"Square", "Circle"});
+  
+  // Text Formatting
+  fill (255);                   // set the text color to white
   textSize(textSizeVal);        // set the text size
   textAlign(LEFT, TOP);         // set the text alignment to left and top
   float textXStart = width / 2 - textWidth(userInput) / 2;            // set the text to the center of the screen
@@ -409,11 +391,15 @@ void draw()
   float textYStart = height / 2 - totalTextHeight / 2;                // set the text to the center of the screen 
   int currentLineIndex = -1;                                          // initialize the current line index
 
-  // POINTER: Create and handle pointer mode using radio buttons
-  String pointerMode = gui.radio("Pointer/Mode", new String[] {"Square", "Circle"});
-
-  if (defaultDisplayMode == textDisplayMode.buttonMode)
+  // GUI for the Text Display Mode
+  String displayMode = gui.radio(
+    "Text Display/Mode",
+    new String[] {"Button Mode", "Normal Mode"},
+    defaultDisplayMode == textDisplayMode.normalMode ? "Normal Mode" : "Button Mode"
+  );
+  if (displayMode.equals("Button Mode"))
   {
+    defaultDisplayMode = textDisplayMode.buttonMode;
     float lineY = textYStart; // line Y position (top end)
     float lineXStart = margin; // set the line X position (left end)
     currentLineIndex = textIndex; // set the current line index to the text index
@@ -427,8 +413,8 @@ void draw()
       }
       else if (defaultTextMode == textMode.fileMode)
       {
-        texKOR = wrapText(texKOR, maxWidth);
-        createTextBox(texKOR[textIndex], 400, 40); // create a text box for the Korean text from the file
+        String[] texKORArray = wrapText(texKOR, maxWidth); // wrap the 10 lines of Korean text from the file into lines
+        createTextBox(texKORArray[textIndex], 400, 40);    // create a text box for the Korean text from the file
       }
       // resetting the text size and alignment which were changed in the createTextBox function
       textSize(textSizeVal);
@@ -446,7 +432,7 @@ void draw()
     }
     else if (defaultFeature == Feature.slidingWindow)
     {
-      slidingWindowFrequency = gui.sliderInt("Braille Settings/Sliding Window Frequenxcy", defaultSlidingWindow_FREQ, 1, 8); // set the sliding window frequency
+      slidingWindowFrequency = gui.sliderInt("Braille Settings/Sliding Window Frequency", defaultSlidingWindow_FREQ, 1, 8); // set the sliding window frequency
       slidingWindowFeature(currentLine, slidingWindowFrequency, margin, lineY, lineHeight, boxHeightVal); // call the slidingWindowFeature function
     }
     else if (defaultFeature == Feature.wordGrouping)
@@ -466,10 +452,12 @@ void draw()
     
     float thresholdX = 8; // threshold for the ends of line beep in pixels
     playBoundaryBeeps(pointerX, mouseY, margin, margin + textWidth(currentLine), paragraphTopY, paragraphBottomY, thresholdX, EOLBeep, TopandBottomBeep); // play the end of line beep
-  }
 
-  else if (defaultDisplayMode == textDisplayMode.normalMode)
+  }
+  // TODO: need to add the guiding text feature
+  else if (displayMode.equals("Normal Mode"))
   {
+    defaultDisplayMode = textDisplayMode.normalMode;
     // iterating through the lines of text
     for (int i = 0; i < lines.length; i++)
     {
@@ -523,6 +511,7 @@ void draw()
     float thresholdX = 8; // threshold for the ends of line beep in pixels
     playBoundaryBeeps(pointerX, mouseY, margin, margin + textWidth(lines[activeLineIndex]), paragraphTopY, paragraphBottomY, thresholdX, EOLBeep, TopandBottomBeep); // play the end of line beep
   }
+
 }
 
 
@@ -788,9 +777,9 @@ void createTextBox(String input, int boxWidth, int boxHeight)
 {
   background(0); // set the background color to black
 
-  // Calculate bottom-right corner position
-  int boxX = width - boxWidth - 650;   // 50 pixels margin from right
-  int boxY = boxHeight + 50; // 50 pixels margin from top
+  // Calculate bottom-left corner position
+  int boxX = 50;   // 50 pixels margin from right
+  int boxY = height - boxHeight - 50; // 50 pixels margin from top
 
   // Draw the textbox
   fill(0);

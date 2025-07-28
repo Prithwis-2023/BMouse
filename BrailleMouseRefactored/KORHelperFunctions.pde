@@ -132,7 +132,7 @@ boolean containsChar(char[] array, char target)
 
 // This function decomposes an entire Hanguel text string into its individual components
 // and returns the braille dot representation of the decomposed text
-String[] decompose(String inputString)
+String decompose(String inputString)
 {
   String decomposedString = ""; String text = "";
   for (int i = 0; i < inputString.length(); i++)
@@ -233,7 +233,7 @@ String[] decompose(String inputString)
       }
     }
   }
-  return new String[] { decomposedString, text };
+  return decomposedString;
 }
 
 String bUnicodesStringKOR (String group, int spacesLeft, int spacesRight)
