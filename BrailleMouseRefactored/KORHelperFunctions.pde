@@ -132,9 +132,9 @@ boolean containsChar(char[] array, char target)
 
 // This function decomposes an entire Hanguel text string into its individual components
 // and returns the braille dot representation of the decomposed text
-String decompose(String inputString)
+String[] decompose(String inputString)
 {
-  String decomposedString = "";
+  String decomposedString = ""; String text = "";
   for (int i = 0; i < inputString.length(); i++)
   {
     char ch = inputString.charAt(i);
@@ -144,6 +144,7 @@ String decompose(String inputString)
       if (CONTRACTIONS.containsKey(ch))
       {
         decomposedString += CONTRACTIONS.get(ch); // appending the Braille Dot pattern
+        text += str(ch); // appending the original character
         //markers += 'O'; 
         continue;
       }
@@ -163,11 +164,13 @@ String decompose(String inputString)
         if (containsChar(doubleConsonants, choeseong))
         {
           decomposedString += "⠠" + korBrailleDB.get(choeseong).get(0); 
+          text += str(choeseong);
           //markers += "CC";
         }
         else
         {
           decomposedString += korBrailleDB.get(choeseong).get(0);
+          text += str(choeseong);
           //markers += str('C');
         }
       }
@@ -177,11 +180,13 @@ String decompose(String inputString)
         if (korBrailleDB2.get(jungseong).get(1) != "-")
         {
           decomposedString += korBrailleDB2.get(jungseong).get(0) + korBrailleDB2.get(jungseong).get(1);
+          text += str(jungseong);
           //markers += "jj";
         }
         else
         {
           decomposedString += korBrailleDB2.get(jungseong).get(0);
+          text += str(jungseong);
           //markers += str('j');
         }
       }
@@ -191,11 +196,13 @@ String decompose(String inputString)
         if (containsChar(doubleConsonants, jongseong))
         {
           decomposedString += "⠠" + korBrailleDB.get(jongseong).get(1);
+          text += str(jongseong);
           //markers += "JJ";
         }
         else
         {
           decomposedString += korBrailleDB.get(jongseong).get(1);
+          text += str(jongseong);
           //markers += str('J');
         }
       }
@@ -211,19 +218,22 @@ String decompose(String inputString)
             decomposedString += "⠼";
           }
           decomposedString += otherChars.get(ch);
+          text += str(ch);
         }
         else
         {
           decomposedString += otherChars.get(ch);
+          text += str(ch);
         }
       }
       else  // beyond the otherChars list, for example spaces
       {
         decomposedString += str(ch);
+        text += str(ch);
       }
     }
   }
-  return decomposedString;
+  return new String[] { decomposedString, text };
 }
 
 String bUnicodesStringKOR (String group, int spacesLeft, int spacesRight)

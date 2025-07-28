@@ -12,6 +12,8 @@ Language defaultLanguage = Language.English; // default language
 Feature defaultFeature = Feature.charGrouping; // default feature
 textMode defaultTextMode = textMode.plainTextMode; // default text mode
 textDisplayMode defaultDisplayMode = textDisplayMode.normalMode; // default text display mode
+Language previousLanguage = defaultLanguage; // previous language for the language change detection
+textMode previousTextMode = defaultTextMode; // previous text mode for the text mode change detection
 
 // constants
 /* we have three display modes:
@@ -28,13 +30,14 @@ int textIndex = 0; // index for the lines of the sample text
 int randIndex = 0; // random start index in case of the file mode. Same for the korean file mode
 String DTEXT; // the text to be displayed
 String engDTEXT = "This is it. \n The fight of our lives and we're going to win. Bla Bla Black Sheep have you any wool.\n Whatever it takes. \n And Hello World!";  // custom text
-String korDTEXT = "시계가 물에 빠졌다. 123"; // custom Korean text
+String korDTEXT = "시계가 물에 빠졌다. \n 동쪽에서 불어오는 강한 바람. \n 숨쉬기 힘들다. 123"; // custom Korean text
+String benDTEXT = "বাংলা ভাষা একটি সুন্দর ভাষা। \n এটি আমাদের মাতৃভাষা। \n বাংলা ভাষায় অনেক সাহিত্য আছে।"; // custom Bengali text
 String esDTEXT = "En el otoño, quiero te ver con las johas que caen. \n La luna llena brilla en el cielo. \n ¡Hola Mundo!"; // custom Spanish text
-//String markersString = ""; // markers for the Korean text
+String texKOR;
 
-String[] lines;            // holds the lines to be sent for processing
+String[] lines; String[] linesForDisplayKOR;  // holds the lines to be sent for processing
 String[] engLinesFromFile; // used for holding the random lines extracted from the english text file
-String[] korLinesFromFile; // used for holding the random lines extracted from the korean text file
+String[] korLinesFromFile; String[] korLinesFromFileDots; String[] korLinesFromFilePlain; // used for holding the random lines extracted from the korean text file
 String[] esLinesFromFile;  // used for holding the random lines extracted from the spanish text file
 
 // Sound
@@ -52,13 +55,13 @@ String portName = Serial.list()[0];  // default port
 LazyGui gui;
 
 // Others
-int previousLineIndex = -1;  // previous line index
-int charGroupingFrequency; // stores the character grouping frequency
-int slidingWindowFrequency; // stores the sliding window frequency
+int previousLineIndex = -1;      // previous line index
+int charGroupingFrequency;      // stores the character grouping frequency
+int slidingWindowFrequency;     // stores the sliding window frequency
 String userInput = "";
 String lastSentGroup = "";
 PFont fontEnglish, fontKorean; // initialize the font
-int lastVerticalZone = 0; // -1 for above boundary, 0 for inside and 1 for below the boundary line
+int lastVerticalZone = 0;      // -1 for above boundary, 0 for inside and 1 for below the boundary line
 
 // Clears GUI Data
 void clearGUIData()
@@ -105,11 +108,15 @@ void setup()
   // Load the sample text for English and Korean from files
   engLinesFromFile = loadStrings("textENG.txt");
   korLinesFromFile = loadStrings("textKOR2.txt");
+  korLinesFromFileDots = new String[korLinesFromFile.length]; // array to hold the braille dots for the Korean lines from the file
+  korLinesFromFilePlain = new String[korLinesFromFile.length]; // array to hold the plain text for the Korean lines from the file
 
   // Decompose the Korean lines from the file
   for (int i = 0; i < korLinesFromFile.length; i++)
   {
-    korLinesFromFile[i] = decompose(korLinesFromFile[i]);
+    korLinesFromFileDots[i] = decompose(korLinesFromFile[i])[0];
+    korLinesFromFilePlain[i] = decompose(korLinesFromFile[i])[1]; 
+
   }
   // Randomly select a starting index for the lines from the file
   randIndex = int(random(Math.min(korLinesFromFile.length, engLinesFromFile.length) - 9)); // because we want 10 lines, so we need to subtract. We don't need another one for the korean mode
@@ -296,7 +303,7 @@ void draw()
   else if (lang.equals("Korean"))
   {
     defaultLanguage = Language.Korean;
-    DTEXT = decompose(korDTEXT); // decompose the Korean text
+    DTEXT = decompose(korDTEXT)[0]; // decompose the Korean text
     textFont(fontKorean);
   }
   else if (lang.equals("Español"))
@@ -366,10 +373,15 @@ void draw()
   if (defaultTextMode == textMode.plainTextMode)
   {
     userInput = DTEXT; // display the text in the center of the screen
-    gui.text("Text/Input", DTEXT);
     // Transformation of the text into lines
     float maxWidth = width - 2 * margin;
     lines = wrapText(userInput, maxWidth);
+
+    if (defaultLanguage == Language.Korean)
+    {
+      createTextBox(decompose(korDTEXT)[1], 400, 40); // create a text box for the Korean text because we are processing the braille dots for this language
+      linesForDisplayKOR = wrapText(decompose(korDTEXT)[1], maxWidth);
+    }
   }
   else if (defaultTextMode == textMode.fileMode)
   {
@@ -380,16 +392,12 @@ void draw()
     }
     else if (defaultLanguage == Language.Korean)
     {
-      arrayCopy(korLinesFromFile, randIndex, lines, 0, 10); // arrayCopy(src, srcPos, dest, destPos, length)
-      //println(lines);
-      String decomposed = decompose(lines[0]); 
-      DTEXT = decomposed; // update text for display
+      arrayCopy(korLinesFromFileDots, randIndex, lines, 0, 10); // arrayCopy(src, srcPos, dest, destPos, length)
+      arrayCopy(korLinesFromFilePlain, randIndex, linesForDisplayKOR, 0, 10); // arrayCopy(src, srcPos, dest, destPos, length)
+      texKOR = String.join(" \n ", linesForDisplayKOR); // join the lines with a newline character
+      createTextBox(texKOR, 400, 40); // create a text box
     }
   }
-
-  // // Transformation of the text into lines
-  // float maxWidth = width - 2 * margin;
-  // lines = wrapText(userInput, maxWidth);
 
   // Text Formatting 
   fill (255);                   // set the text colot to white
@@ -407,12 +415,29 @@ void draw()
   if (defaultDisplayMode == textDisplayMode.buttonMode)
   {
     float lineY = textYStart; // line Y position (top end)
-
     float lineXStart = margin; // set the line X position (left end)
-
     currentLineIndex = textIndex; // set the current line index to the text index
     String currentLine = lines[textIndex]; // get the current line
-    DTEXT = currentLine; // update the text for display
+
+    if (defaultLanguage == Language.Korean)
+    {
+      if (defaultTextMode == textMode.plainTextMode)
+      {
+        createTextBox(linesForDisplayKOR[textIndex], 400, 40); // create a text box for the Korean text
+      }
+      else if (defaultTextMode == textMode.fileMode)
+      {
+        texKOR = wrapText(texKOR, maxWidth);
+        createTextBox(texKOR[textIndex], 400, 40); // create a text box for the Korean text from the file
+      }
+      // resetting the text size and alignment which were changed in the createTextBox function
+      textSize(textSizeVal);
+      textAlign(LEFT, TOP);        
+      textXStart = width / 2 - textWidth(userInput) / 2;        
+      lineHeight = textAscent() + textDescent() + boxHeightVal;   
+      totalTextHeight = lines.length * (lineHeight + extraSpacing); 
+      textYStart = height / 2 - totalTextHeight / 2;               
+    }
     
     if (defaultFeature == Feature.charGrouping)
     {
@@ -757,4 +782,23 @@ void pointer(String mode, float pointerX, float pointerY)
     fill(0, 0, 255); // set the pointer color to blue
     ellipse(pointerX, pointerY, 20, 20); // draw the circle pointer
   }
+}
+
+void createTextBox(String input, int boxWidth, int boxHeight)
+{
+  background(0); // set the background color to black
+
+  // Calculate bottom-right corner position
+  int boxX = width - boxWidth - 650;   // 50 pixels margin from right
+  int boxY = boxHeight + 50; // 50 pixels margin from top
+
+  // Draw the textbox
+  fill(0);
+  //rect(boxX, boxY, boxWidth, boxHeight);
+
+  // Draw the text inside
+  fill(255);
+  textSize(20);
+  textAlign(LEFT, CENTER);
+  text(input, boxX + 10, boxY + boxHeight / 2);
 }
