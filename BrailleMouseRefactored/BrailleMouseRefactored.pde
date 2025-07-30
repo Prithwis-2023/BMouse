@@ -109,9 +109,10 @@ void setup()
   fontEnglish = createFont("MapleMono-SemiBold.otf", 32);
   fontKorean = createFont("Noto Sans CJK KR", 32);
 
-  // Load the sample text for English and Korean from files
+  // Load the sample text for English, Korean and Spanish from files
   engLinesFromFile = loadStrings("textENG.txt");
   korLinesFromFile = loadStrings("textKOR2.txt");
+  esLinesFromFile = loadStrings("textESP.txt");
   korLinesFromFileDots = new String[korLinesFromFile.length]; // array to hold the braille dots patterns for the Korean lines from the file
 
   // Decompose the Korean lines from the file in the braille dot
@@ -121,7 +122,7 @@ void setup()
 
   }
   // Randomly select a starting index for the lines from the file
-  randIndex = int(random(Math.min(korLinesFromFile.length, engLinesFromFile.length) - 9)); // because we want 10 lines, so we need to subtract. We don't need another one for the korean mode
+  randIndex = int(random(Math.min(esLinesFromFile.length, Math.min(korLinesFromFile.length, engLinesFromFile.length)) - 9)); // because we want 10 lines, so we need to subtract. We don't need another one for the korean mode
 }
 
 // clearing all the cells upon killing the program
@@ -288,11 +289,11 @@ void draw()
 {
   background(gui.colorPicker("Background/Color").hex);
 
-  // --- UI Parameters ---
-  float extraSpacing = gui.sliderInt("Text Settings/Line Spacing", 10);
-  float textSizeVal = gui.sliderInt("Text Settings/Text Size", 32);
-  float boxHeightVal = gui.sliderInt("Text Settings/Box Height", 0);
-  float margin = gui.sliderInt("Text Settings/ Margin", 100);
+  // --- UI Parameters --- //
+  float extraSpacing = gui.sliderInt("Text Settings/Line Spacing", 10);   // extra spacing between lines
+  float textSizeVal = gui.sliderInt("Text Settings/Text Size", 32);      // font size
+  float boxHeightVal = gui.sliderInt("Text Settings/Box Height", 0);    // height of the bounding box around the text
+  float margin = gui.sliderInt("Text Settings/ Margin", 100);          // margin from the left edge of the screen
   float maxWidth = width - 2 * margin;
 
   updateFeatureSelection();
@@ -300,6 +301,7 @@ void draw()
   updateTextMode(maxWidth);
 
   String pointerMode = gui.radio("Pointer/Mode", new String[] {"Square", "Circle"});
+
   String displayMode = gui.radio(
     "Text Display/Mode",
     new String[] {"Button Mode", "Normal Mode"},
@@ -309,7 +311,9 @@ void draw()
   textSize(textSizeVal);
   textAlign(LEFT, TOP);
   float lineHeight = textAscent() + textDescent() + boxHeightVal;
-  float totalTextHeight = lines.length * (lineHeight + extraSpacing);
+  int visibleLines = min(10, lines.length);
+  float totalTextHeight = visibleLines * (lineHeight + extraSpacing);
+  //float totalTextHeight = lines.length * (lineHeight + extraSpacing);
   float textYStart = height / 2 - totalTextHeight / 2;
 
   if (displayMode.equals("Button Mode")) 
@@ -383,7 +387,10 @@ void updateTextMode(float maxWidth)
   {
     if (defaultLanguage == Language.English) 
     {
-      arrayCopy(engLinesFromFile, randIndex, lines = new String[10], 0, 10);
+      //arrayCopy(engLinesFromFile, randIndex, lines = new String[10], 0, 10);
+      lines = engLinesFromFile;
+      //arrayCopy(engLinesFromFile, 0, lines = new String[engLinesFromFile.length], 0, engLinesFromFile.length);
+
     } 
     else if (defaultLanguage == Language.Korean) 
     {
@@ -394,7 +401,7 @@ void updateTextMode(float maxWidth)
       // texKOR = String.join(" \n ", linesForDisplayKOR);
       lines = korLinesFromFileDots;
       linesForDisplayKOR = korLinesFromFile;
-      texKOR = String.join(" \n ", linesForDisplayKOR);
+      //texKOR = String.join(" \n ", linesForDisplayKOR);
     }
   }
 }
@@ -406,17 +413,20 @@ void renderButtonMode(float textSizeVal, float boxHeightVal, float extraSpacing,
 
   if (defaultLanguage == Language.Korean) 
   {
-    String[] displayLines = defaultTextMode == textMode.fileMode ? wrapText(texKOR, maxWidth) : linesForDisplayKOR;
+    //String[] displayLines = defaultTextMode == textMode.fileMode ? wrapText(texKOR, maxWidth) : linesForDisplayKOR;
+    String[] displayLines = linesForDisplayKOR;
     if (currentLineIndex < displayLines.length) 
     {
       createTextBox(displayLines[currentLineIndex], 400, 40);
-      // reset the text size and alignment for the text box                         
-      textSize(textSizeVal);
-      textAlign(LEFT, TOP);
-      lineHeight = textAscent() + textDescent() + boxHeightVal;
-      float totalTextHeight = lines.length * (lineHeight + extraSpacing);
-      textYStart = height / 2 - totalTextHeight / 2;
     }
+    // reset the text size and alignment for the text box                         
+    textSize(textSizeVal);
+    textAlign(LEFT, TOP);
+    lineHeight = textAscent() + textDescent() + boxHeightVal;
+    int visibleLines = min(10, lines.length);
+    float totalTextHeight = visibleLines * (lineHeight + extraSpacing);
+    //float totalTextHeight = lines.length * (lineHeight + extraSpacing);
+    textYStart = height / 2 - totalTextHeight / 2;
   }
 
   if (defaultFeature == Feature.charGrouping) 
@@ -490,13 +500,17 @@ void renderNormalMode(float textSizeVal, float boxHeightVal, float extraSpacing,
   else if (defaultTextMode == textMode.fileMode)
   {
     int currentLineIndex = -1;
-    int activeLineIndex = constrain((int)((mouseY - textYStart) / (lineHeight + extraSpacing)) + lineWindowStartIndex, 0, lines.length - 1);
-    for (int i = lineWindowStartIndex; i < min(lineWindowStartIndex + 10, lines.length); i++)
-    {
-      float lineY = textYStart + (i - lineWindowStartIndex) * (lineHeight + extraSpacing);
-      if (mouseY >= lineY && mouseY < lineY + lineHeight) currentLineIndex = i;
+    int visibleLineCount = min(10, lines.length - lineWindowStartIndex); // number of lines to display
+    int relativeLineIndex = constrain((int)((mouseY - textYStart) / (lineHeight + extraSpacing)), 0, visibleLineCount - 1); // relative index of the line in the visible window
+    int activeLineIndex = lineWindowStartIndex + relativeLineIndex; // global index of the line in the file
 
-      String currentLine = lines[i];
+    for (int i = 0; i < visibleLineCount; i++)
+    {
+      int globalLineIndex = lineWindowStartIndex + i; // global index of the line
+      float lineY = textYStart + i * (lineHeight + extraSpacing); // calculate the start Y position of the line
+      if (mouseY >= lineY && mouseY <= lineY + lineHeight) currentLineIndex = globalLineIndex; // check if the mouse is over the line
+
+      String currentLine = lines[globalLineIndex]; // get the current line based on the global index
       if (defaultFeature == Feature.charGrouping) 
       {
         charGroupingFrequency = gui.sliderInt("Braille Settings/Character Grouping Frequency", defaultCharGrouping_FREQ, 1, 8);
@@ -512,12 +526,11 @@ void renderNormalMode(float textSizeVal, float boxHeightVal, float extraSpacing,
         wordGroupingFeature(currentLine, margin, lineY, lineHeight, boxHeightVal);
       }
     }
-    
+
     if (defaultLanguage == Language.Korean && linesForDisplayKOR != null && activeLineIndex < linesForDisplayKOR.length) 
     {
       createTextBox(linesForDisplayKOR[activeLineIndex], 400, 40);
     }
-
     float pointerX = constrain(mouseX, margin, margin + textWidth(lines[activeLineIndex]));
     float pointerY = textYStart + activeLineIndex * (lineHeight + extraSpacing) + lineHeight / 3;
     pointer(pointerMode, pointerX, pointerY);
@@ -528,7 +541,50 @@ void renderNormalMode(float textSizeVal, float boxHeightVal, float extraSpacing,
       COLBeep.play();
       previousLineIndex = currentLineIndex;
     }
-    playBoundaryBeeps(pointerX, mouseY, margin, margin + textWidth(lines[activeLineIndex]), textYStart, textYStart + lines.length * (lineHeight + extraSpacing), 8, EOLBeep, TopandBottomBeep);
+    float topVisibleY = textYStart;
+    float bottomVisibleY = textYStart + visibleLineCount * (lineHeight + extraSpacing);
+    playBoundaryBeeps(pointerX, mouseY, margin, margin + textWidth(lines[activeLineIndex]), topVisibleY, bottomVisibleY, 8, EOLBeep, TopandBottomBeep);
+
+    // int currentLineIndex = -1;
+    // int activeLineIndex = constrain((int)((mouseY - textYStart) / (lineHeight + extraSpacing)) + lineWindowStartIndex, 0, lines.length - 1);
+    // for (int i = lineWindowStartIndex; i < min(lineWindowStartIndex + 10, lines.length); i++)
+    // {
+    //   float lineY = textYStart + (i - lineWindowStartIndex) * (lineHeight + extraSpacing);
+    //   if (mouseY >= lineY && mouseY < lineY + lineHeight) currentLineIndex = i;
+
+    //   String currentLine = lines[i];
+    //   if (defaultFeature == Feature.charGrouping) 
+    //   {
+    //     charGroupingFrequency = gui.sliderInt("Braille Settings/Character Grouping Frequency", defaultCharGrouping_FREQ, 1, 8);
+    //     charGroupingFeature(currentLine, charGroupingFrequency, margin, lineY, lineHeight, boxHeightVal);
+    //   } 
+    //   else if (defaultFeature == Feature.slidingWindow) 
+    //   {
+    //     slidingWindowFrequency = gui.sliderInt("Braille Settings/Sliding Window Frequency", defaultSlidingWindow_FREQ, 1, 8);
+    //     slidingWindowFeature(currentLine, slidingWindowFrequency, margin, lineY, lineHeight, boxHeightVal);
+    //   } 
+    //   else 
+    //   {
+    //     wordGroupingFeature(currentLine, margin, lineY, lineHeight, boxHeightVal);
+    //   }
+    // }
+    
+    // if (defaultLanguage == Language.Korean && linesForDisplayKOR != null && activeLineIndex < linesForDisplayKOR.length) 
+    // {
+    //   createTextBox(linesForDisplayKOR[activeLineIndex], 400, 40);
+    // }
+
+    // float pointerX = constrain(mouseX, margin, margin + textWidth(lines[activeLineIndex]));
+    // float pointerY = textYStart + activeLineIndex * (lineHeight + extraSpacing) + lineHeight / 3;
+    // pointer(pointerMode, pointerX, pointerY);
+
+    // if (currentLineIndex != -1 && currentLineIndex != previousLineIndex) 
+    // {
+    //   COLBeep.stop();
+    //   COLBeep.play();
+    //   previousLineIndex = currentLineIndex;
+    // }
+    // playBoundaryBeeps(pointerX, mouseY, margin, margin + textWidth(lines[activeLineIndex]), textYStart, textYStart + lines.length * (lineHeight + extraSpacing), 8, EOLBeep, TopandBottomBeep);
   }
 }
 
