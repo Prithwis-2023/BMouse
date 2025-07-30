@@ -3,8 +3,10 @@ import com.krab.lazy.*;
 import processing.serial.*;
 import processing.sound.*;
 
+int lineWindowStartIndex = 0;  // starting index for visible 10-line window in Normal Mode (File Mode)
+
 // create enums for the text display modes and the features
-enum Language {English, Korean}; 
+enum Language {English, Korean, Español};  // create an enum for the languages
 enum Feature {charGrouping, wordGrouping, slidingWindow}; // create an enum for the features
 enum textMode {plainTextMode, fileMode}; // create an enum for the mode of text, either plain text or extraction from a txt file
 enum textDisplayMode {buttonMode, normalMode}; // create an enum for the text display modes
@@ -12,6 +14,8 @@ Language defaultLanguage = Language.English; // default language
 Feature defaultFeature = Feature.charGrouping; // default feature
 textMode defaultTextMode = textMode.plainTextMode; // default text mode
 textDisplayMode defaultDisplayMode = textDisplayMode.normalMode; // default text display mode
+Language previousLanguage = defaultLanguage; // previous language for the language change detection
+textMode previousTextMode = defaultTextMode; // previous text mode for the text mode change detection
 
 // constants
 /* we have three display modes:
@@ -26,13 +30,19 @@ final int defaultSlidingWindow_FREQ = 8;  // sliding window frequency for slidin
 /* Text and Languages Related */
 int textIndex = 0; // index for the lines of the sample text
 int randIndex = 0; // random start index in case of the file mode. Same for the korean file mode
-String DTEXT = "This is it. \n The fight of our lives and we're going to win. Bla Bla Black Sheep have you any wool.\n Whatever it takes. \n And Hello World!";  // custom text
-String korDTEXT = "시계가 물에 빠졌다. 123"; // custom Korean text
-String markersString = ""; // markers for the Korean text
+String DTEXT; // the text to be displayed
+String engDTEXT = "This is it. \n The fight of our lives and we're going to win. Bla Bla Black Sheep have you any wool.\n Whatever it takes. \n And Hello World!";  // custom text
+String korDTEXT = "시계가 물에 빠졌다. \n 동쪽에서 불어오는 강한 바람. \n 숨쉬기 힘들다. 123"; // custom Korean text
+String benDTEXT = "বাংলা ভাষা একটি সুন্দর ভাষা। \n এটি আমাদের মাতৃভাষা। \n বাংলা ভাষায় অনেক সাহিত্য আছে।"; // custom Bengali text
+String esDTEXT = "En el otoño, quiero te ver con las johas que caen. \n La luna llena brilla en el cielo. \n ¡Hola Mundo!"; // custom Spanish text
 
-String[] lines;            // holds the lines to be sent for processing
+String texKOR; // the text to be displayed in the text box for the Korean language (used in the korean file mode)
+
+String[] lines; // holds the lines to be sent for processing
+String[] linesForDisplayKOR;  // hold the lines to be displayed for the Korean text into the textbox
 String[] engLinesFromFile; // used for holding the random lines extracted from the english text file
-String[] korLinesFromFile; // used for holding the random lines extracted from the korean text file
+String[] korLinesFromFile; String[] korLinesFromFileDots; // used for holding the random lines extracted from the korean text file
+String[] esLinesFromFile;  // used for holding the random lines extracted from the spanish text file
 
 // Sound
 SoundFile EOLBeep; 
@@ -49,13 +59,13 @@ String portName = Serial.list()[0];  // default port
 LazyGui gui;
 
 // Others
-int previousLineIndex = -1;  // previous line index
-int charGroupingFrequency; // stores the character grouping frequency
-int slidingWindowFrequency; // stores the sliding window frequency
+int previousLineIndex = -1;      // previous line index
+int charGroupingFrequency;      // stores the character grouping frequency
+int slidingWindowFrequency;     // stores the sliding window frequency
 String userInput = "";
 String lastSentGroup = "";
 PFont fontEnglish, fontKorean; // initialize the font
-int lastVerticalZone = 0; // -1 for above boundary, 0 for inside and 1 for below the boundary line
+int lastVerticalZone = 0;      // -1 for above boundary, 0 for inside and 1 for below the boundary line
 
 // Clears GUI Data
 void clearGUIData()
@@ -99,17 +109,20 @@ void setup()
   fontEnglish = createFont("MapleMono-SemiBold.otf", 32);
   fontKorean = createFont("Noto Sans CJK KR", 32);
 
-  // Load the sample text for English and Korean from files
+  // Load the sample text for English, Korean and Spanish from files
   engLinesFromFile = loadStrings("textENG.txt");
   korLinesFromFile = loadStrings("textKOR2.txt");
+  esLinesFromFile = loadStrings("textESP.txt");
+  korLinesFromFileDots = new String[korLinesFromFile.length]; // array to hold the braille dots patterns for the Korean lines from the file
 
-  // Decompose the Korean lines from the file
+  // Decompose the Korean lines from the file in the braille dot
   for (int i = 0; i < korLinesFromFile.length; i++)
   {
-    korLinesFromFile[i] = decompose(korLinesFromFile[i]);
+    korLinesFromFileDots[i] = decompose(korLinesFromFile[i]);
+
   }
   // Randomly select a starting index for the lines from the file
-  randIndex = int(random(Math.min(korLinesFromFile.length, engLinesFromFile.length) - 9)); // because we want 10 lines, so we need to subtract. We don't need another one for the korean mode
+  randIndex = int(random(Math.min(esLinesFromFile.length, Math.min(korLinesFromFile.length, engLinesFromFile.length)) - 9)); // because we want 10 lines, so we need to subtract. We don't need another one for the korean mode
 }
 
 // clearing all the cells upon killing the program
@@ -145,6 +158,12 @@ void sendToBrailleGroup(String group, String startMarker, String endMarker, int 
       String brailleString = startMarker + bUnicodesStringKOR(group, spacesLeft, spacesRight) + endMarker;
       myPort.write(brailleString); // send the braille string to the Arduino
       println("Sent to Arduino KOR: " + brailleString); // Debugging output
+    }
+    else if (defaultLanguage == Language.Español)
+    {
+      String brailleString = startMarker + bUnicodesStringES(group, spacesLeft, spacesRight) + endMarker;
+      myPort.write(brailleString); // send the braille string to the Arduino
+      println("Sent to Arduino ESP: " + brailleString); // Debugging output
     }
   }
   else
@@ -265,222 +284,307 @@ void playBoundaryBeeps(float pointerX, float pointerY, float startOfLineX, float
 
 // Draw function - handles the GUI, text display, and serial communication
 // This function is called repeatedly to update the display and handle user input
-void draw()
-{  
-  // Background color adjustment
+// Refactored draw() function with safety checks and modular design
+void draw() 
+{
   background(gui.colorPicker("Background/Color").hex);
-  
-  // GUI for Language Selection
-  String lang = gui.radio(
-    "Language",
-    new String[] {"English", "Korean"},
-    defaultLanguage == Language.English ? "English" : "Korean"
-  );
-  if (lang.equals("English"))
-  {
-    defaultLanguage = Language.English;
-    DTEXT = "This is it. \n The fight of our lives and we're going to win. Bla Bla Black Sheep have you any wool.\n Whatever it takes. \n And Hello World!";
-    textFont(fontEnglish);
-  }
-  else if (lang.equals("Korean"))
-  {
-    defaultLanguage = Language.Korean;
-    DTEXT = decompose(korDTEXT); // decompose the Korean text
-    textFont(fontKorean);
-  }
 
-  // GUI for the Display Mode
+  // --- UI Parameters --- //
+  float extraSpacing = gui.sliderInt("Text Settings/Line Spacing", 10);   // extra spacing between lines
+  float textSizeVal = gui.sliderInt("Text Settings/Text Size", 32);      // font size
+  float boxHeightVal = gui.sliderInt("Text Settings/Box Height", 0);    // height of the bounding box around the text
+  float margin = gui.sliderInt("Text Settings/ Margin", 100);          // margin from the left edge of the screen
+  float maxWidth = width - 2 * margin;
+
+  updateFeatureSelection();
+  updateLanguageSelection();
+  updateTextMode(maxWidth);
+
+  String pointerMode = gui.radio("Pointer/Mode", new String[] {"Square", "Circle"});
+
   String displayMode = gui.radio(
     "Text Display/Mode",
     new String[] {"Button Mode", "Normal Mode"},
     defaultDisplayMode == textDisplayMode.normalMode ? "Normal Mode" : "Button Mode"
   );
-  if (displayMode.equals("Button Mode"))
+
+  textSize(textSizeVal);
+  textAlign(LEFT, TOP);
+  float lineHeight = textAscent() + textDescent() + boxHeightVal;
+  int visibleLines = min(10, lines.length);
+  float totalTextHeight = visibleLines * (lineHeight + extraSpacing);
+  //float totalTextHeight = lines.length * (lineHeight + extraSpacing);
+  float textYStart = height / 2 - totalTextHeight / 2;
+
+  if (displayMode.equals("Button Mode")) 
   {
     defaultDisplayMode = textDisplayMode.buttonMode;
-  }
-  else if (displayMode.equals("Normal Mode"))
+    renderButtonMode(textSizeVal, boxHeightVal, extraSpacing, margin, maxWidth, lineHeight, textYStart, pointerMode);
+  } 
+  else 
   {
     defaultDisplayMode = textDisplayMode.normalMode;
+    renderNormalMode(textSizeVal, boxHeightVal, extraSpacing, margin, maxWidth, lineHeight, textYStart, pointerMode);
   }
-
-  // GUI for the Feature Selection
+}
+// Function to update the feature selection based on the GUI input
+void updateFeatureSelection() 
+{
   String feature = gui.radio(
-  "Braille Settings/Feature",
-  new String[] {"Character Grouping", "Word Grouping", "Sliding Window"},
-  defaultFeature == Feature.charGrouping ? "Character Grouping" :
-  defaultFeature == Feature.wordGrouping ? "Word Grouping" :
-  "Sliding Window"
+    "Braille Settings/Feature",
+    new String[] {"Character Grouping", "Word Grouping", "Sliding Window"},
+    defaultFeature == Feature.charGrouping ? "Character Grouping" :
+    defaultFeature == Feature.wordGrouping ? "Word Grouping" : "Sliding Window"
   );
-
-  if (feature.equals("Character Grouping"))
-  {
-    defaultFeature = Feature.charGrouping;
-  }
-  else if (feature.equals("Word Grouping"))
-  {
-    defaultFeature = Feature.wordGrouping;
-  }
-  else
-  {
-    defaultFeature = Feature.slidingWindow;
-  }
-
-  // Text Settings
-  float extraSpacing = gui.sliderInt("Text Settings/Line Spacing", 10);
-  float textSizeVal = gui.sliderInt("Text Settings/Text Size", 32);
-  float boxHeightVal = gui.sliderInt("Text Settings/Box Height", 0);
-  float margin = gui.sliderInt("Text Settings/ Margin", 100);
-
-  // Handle the text input
-  String text = gui.radio(
-    "Text/Mode",
-    new String[] {"Plain Text", "File"},
-    defaultTextMode == textMode.plainTextMode ? "Plain Text" : "File"
+  defaultFeature = feature.equals("Character Grouping") ? Feature.charGrouping :
+                    feature.equals("Word Grouping") ? Feature.wordGrouping : Feature.slidingWindow;
+}
+// Function to update the language selection based on the GUI input
+void updateLanguageSelection() 
+{
+  String lang = gui.radio(
+    "Language",
+    new String[] {"English", "Korean", "Español"},
+    defaultLanguage == Language.English ? "English" :
+    defaultLanguage == Language.Korean ? "Korean" : "Español"
   );
-  if (text.equals("Plain Text"))
+  if (lang.equals("English")) 
   {
-    defaultTextMode = textMode.plainTextMode;
-  }
-  else if (text.equals("File"))
+    defaultLanguage = Language.English;
+    DTEXT = engDTEXT;
+    textFont(fontEnglish);
+  } 
+  else if (lang.equals("Korean")) 
   {
-    defaultTextMode = textMode.fileMode;
+    defaultLanguage = Language.Korean;
+    DTEXT = decompose(korDTEXT);
+    textFont(fontKorean);
+  } 
+  else 
+  {
+    defaultLanguage = Language.Español;
+    DTEXT = esDTEXT;
+    textFont(fontEnglish);
   }
-  
+}
+// Function to update the text mode based on the GUI input, either the text in the code or from a file
+void updateTextMode(float maxWidth) 
+{
+  String text = gui.radio("Text/Mode", new String[] {"Plain Text", "File"},
+                          defaultTextMode == textMode.plainTextMode ? "Plain Text" : "File");
+  defaultTextMode = text.equals("Plain Text") ? textMode.plainTextMode : textMode.fileMode;
+
+  if (defaultTextMode == textMode.plainTextMode) 
+  {
+    userInput = DTEXT;
+    lines = wrapText(userInput, maxWidth);
+    if (defaultLanguage == Language.Korean) 
+    {
+      linesForDisplayKOR = wrapText(korDTEXT, maxWidth);
+    }
+  } 
+  else 
+  {
+    if (defaultLanguage == Language.English) 
+    {
+      //arrayCopy(engLinesFromFile, randIndex, lines = new String[10], 0, 10);
+      lines = engLinesFromFile;
+      //arrayCopy(engLinesFromFile, 0, lines = new String[engLinesFromFile.length], 0, engLinesFromFile.length);
+
+    } 
+    else if (defaultLanguage == Language.Korean) 
+    {
+      // lines = new String[10];
+      // linesForDisplayKOR = new String[10];
+      // arrayCopy(korLinesFromFileDots, randIndex, lines, 0, 10);
+      // arrayCopy(korLinesFromFile, randIndex, linesForDisplayKOR, 0, 10);
+      // texKOR = String.join(" \n ", linesForDisplayKOR);
+      lines = korLinesFromFileDots;
+      linesForDisplayKOR = korLinesFromFile;
+      //texKOR = String.join(" \n ", linesForDisplayKOR);
+    }
+  }
+}
+// Function to render the button mode for the text display, where only one line is displayed at a time
+void renderButtonMode(float textSizeVal, float boxHeightVal, float extraSpacing, float margin, float maxWidth, float lineHeight, float textYStart, String pointerMode) 
+{
+  int currentLineIndex = constrain(textIndex, 0, lines.length - 1);
+  String currentLine = lines[currentLineIndex];
+
+  if (defaultLanguage == Language.Korean) 
+  {
+    //String[] displayLines = defaultTextMode == textMode.fileMode ? wrapText(texKOR, maxWidth) : linesForDisplayKOR;
+    String[] displayLines = linesForDisplayKOR;
+    if (currentLineIndex < displayLines.length) 
+    {
+      createTextBox(displayLines[currentLineIndex], 400, 40);
+    }
+    // reset the text size and alignment for the text box                         
+    textSize(textSizeVal);
+    textAlign(LEFT, TOP);
+    lineHeight = textAscent() + textDescent() + boxHeightVal;
+    int visibleLines = min(10, lines.length);
+    float totalTextHeight = visibleLines * (lineHeight + extraSpacing);
+    //float totalTextHeight = lines.length * (lineHeight + extraSpacing);
+    textYStart = height / 2 - totalTextHeight / 2;
+  }
+
+  if (defaultFeature == Feature.charGrouping) 
+  {
+    charGroupingFrequency = gui.sliderInt("Braille Settings/Character Grouping Frequency", defaultCharGrouping_FREQ, 1, 8);
+    charGroupingFeature(currentLine, charGroupingFrequency, margin, textYStart, lineHeight, boxHeightVal);
+  } 
+  else if (defaultFeature == Feature.slidingWindow) 
+  {
+    slidingWindowFrequency = gui.sliderInt("Braille Settings/Sliding Window Frequency", defaultSlidingWindow_FREQ, 1, 8);
+    slidingWindowFeature(currentLine, slidingWindowFrequency, margin, textYStart, lineHeight, boxHeightVal);
+  } 
+  else 
+  {
+    wordGroupingFeature(currentLine, margin, textYStart, lineHeight, boxHeightVal);
+  }
+
+  float pointerX = constrain(mouseX, margin, margin + textWidth(currentLine));
+  float pointerY = textYStart + lineHeight / 3;
+  pointer(pointerMode, pointerX, pointerY);
+  playBoundaryBeeps(pointerX, mouseY, margin, margin + textWidth(currentLine), textYStart, textYStart + lineHeight + extraSpacing, 8, EOLBeep, TopandBottomBeep);
+}
+// Function to render the normal mode for the text display, where all the lines are displayed at once
+void renderNormalMode(float textSizeVal, float boxHeightVal, float extraSpacing, float margin, float maxWidth, float lineHeight, float textYStart, String pointerMode) 
+{
   if (defaultTextMode == textMode.plainTextMode)
   {
-    userInput = DTEXT; // display the text in the center of the screen
-    gui.text("Text/Input", DTEXT);
-    // Transformation of the text into lines
-    float maxWidth = width - 2 * margin;
-    lines = wrapText(userInput, maxWidth);
+    int currentLineIndex = -1;
+    int activeLineIndex = constrain((int)((mouseY - textYStart) / (lineHeight + extraSpacing)), 0, lines.length - 1);
+
+    for (int i = 0; i < lines.length; i++) 
+    {
+      float lineY = textYStart + i * (lineHeight + extraSpacing);
+      if (mouseY >= lineY && mouseY < lineY + lineHeight) currentLineIndex = i;
+
+      String currentLine = lines[i];
+      if (defaultFeature == Feature.charGrouping) 
+      {
+        charGroupingFrequency = gui.sliderInt("Braille Settings/Character Grouping Frequency", defaultCharGrouping_FREQ, 1, 8);
+        charGroupingFeature(currentLine, charGroupingFrequency, margin, lineY, lineHeight, boxHeightVal);
+      } 
+      else if (defaultFeature == Feature.slidingWindow) 
+      {
+        slidingWindowFrequency = gui.sliderInt("Braille Settings/Sliding Window Frequency", defaultSlidingWindow_FREQ, 1, 8);
+        slidingWindowFeature(currentLine, slidingWindowFrequency, margin, lineY, lineHeight, boxHeightVal);
+      } 
+      else 
+      {
+        wordGroupingFeature(currentLine, margin, lineY, lineHeight, boxHeightVal);
+      }
+    }
+
+    
+    if (defaultLanguage == Language.Korean && linesForDisplayKOR != null && activeLineIndex < linesForDisplayKOR.length) 
+    {
+      createTextBox(linesForDisplayKOR[activeLineIndex], 400, 40);
+    }
+
+    float pointerX = constrain(mouseX, margin, margin + textWidth(lines[activeLineIndex]));
+    float pointerY = textYStart + activeLineIndex * (lineHeight + extraSpacing) + lineHeight / 3;
+    pointer(pointerMode, pointerX, pointerY);
+
+    if (currentLineIndex != -1 && currentLineIndex != previousLineIndex) 
+    {
+      COLBeep.stop();
+      COLBeep.play();
+      previousLineIndex = currentLineIndex;
+    }
+    playBoundaryBeeps(pointerX, mouseY, margin, margin + textWidth(lines[activeLineIndex]), textYStart, textYStart + lines.length * (lineHeight + extraSpacing), 8, EOLBeep, TopandBottomBeep);
   }
   else if (defaultTextMode == textMode.fileMode)
   {
-    lines = new String[10];
-    if (defaultLanguage == Language.English)
+    int currentLineIndex = -1;
+    int visibleLineCount = min(10, lines.length - lineWindowStartIndex); // number of lines to display
+    int relativeLineIndex = constrain((int)((mouseY - textYStart) / (lineHeight + extraSpacing)), 0, visibleLineCount - 1); // relative index of the line in the visible window
+    int activeLineIndex = lineWindowStartIndex + relativeLineIndex; // global index of the line in the file
+
+    for (int i = 0; i < visibleLineCount; i++)
     {
-      arrayCopy(engLinesFromFile, randIndex, lines, 0, 10); // arrayCopy(src, srcPos, dest, destPos, length)
-    }
-    else if (defaultLanguage == Language.Korean)
-    {
-      arrayCopy(korLinesFromFile, randIndex, lines, 0, 10); // arrayCopy(src, srcPos, dest, destPos, length)
-      //println(lines);
-      String decomposed = decompose(lines[0]); 
-      DTEXT = decomposed; // update text for display
-    }
-  }
+      int globalLineIndex = lineWindowStartIndex + i; // global index of the line
+      float lineY = textYStart + i * (lineHeight + extraSpacing); // calculate the start Y position of the line
+      if (mouseY >= lineY && mouseY <= lineY + lineHeight) currentLineIndex = globalLineIndex; // check if the mouse is over the line
 
-  // // Transformation of the text into lines
-  // float maxWidth = width - 2 * margin;
-  // lines = wrapText(userInput, maxWidth);
-
-  // Text Formatting 
-  fill (255);                   // set the text colot to white
-  textSize(textSizeVal);        // set the text size
-  textAlign(LEFT, TOP);         // set the text alignment to left and top
-  float textXStart = width / 2 - textWidth(userInput) / 2;            // set the text to the center of the screen
-  float lineHeight = textAscent() + textDescent() + boxHeightVal;     // calculate the line height
-  float totalTextHeight = lines.length * (lineHeight + extraSpacing); // calculate the total text height
-  float textYStart = height / 2 - totalTextHeight / 2;                // set the text to the center of the screen 
-  int currentLineIndex = -1;                                          // initialize the current line index
-
-  // POINTER: Create and handle pointer mode using radio buttons
-  String pointerMode = gui.radio("Pointer/Mode", new String[] {"Square", "Circle"});
-
-  if (defaultDisplayMode == textDisplayMode.buttonMode)
-  {
-    float lineY = textYStart; // line Y position (top end)
-
-    float lineXStart = margin; // set the line X position (left end)
-
-    currentLineIndex = textIndex; // set the current line index to the text index
-    String currentLine = lines[textIndex]; // get the current line
-    DTEXT = currentLine; // update the text for display
-    
-    if (defaultFeature == Feature.charGrouping)
-    {
-      charGroupingFrequency = gui.sliderInt("Braille Settings/Character Grouping Frequency", defaultCharGrouping_FREQ, 1, 8); // set the character grouping frequency
-      charGroupingFeature(currentLine, charGroupingFrequency, margin, lineY, lineHeight, boxHeightVal); // call the charGroupingFeature function
-    }
-    else if (defaultFeature == Feature.slidingWindow)
-    {
-      slidingWindowFrequency = gui.sliderInt("Braille Settings/Sliding Window Frequenxcy", defaultSlidingWindow_FREQ, 1, 8); // set the sliding window frequency
-      slidingWindowFeature(currentLine, slidingWindowFrequency, margin, lineY, lineHeight, boxHeightVal); // call the slidingWindowFeature function
-    }
-    else if (defaultFeature == Feature.wordGrouping)
-    {
-      wordGroupingFeature(currentLine, margin, lineY, lineHeight, boxHeightVal); // call the wordGroupingFeature function
-    }
-
-    int activeLineIndex = textIndex; // set the active line index to the text index
-    float pointerX = constrain(mouseX, margin, margin + textWidth(currentLine)); // constrain the pointer X position
-    float pointerY = textYStart + lineHeight / 3; // calculate the pointer Y position (centered vertically in the line)
-    float paragraphTopY = textYStart; // set the paragraph top Y position
-    float paragraphBottomY = textYStart + lineHeight + extraSpacing; // set the paragraph bottom Y position
-
-    pointer(pointerMode, pointerX, pointerY); // call the pointer function to draw the pointer
-
-    // no need for change of line beep in button mode, as the text is displayed in a single line
-    
-    float thresholdX = 8; // threshold for the ends of line beep in pixels
-    playBoundaryBeeps(pointerX, mouseY, margin, margin + textWidth(currentLine), paragraphTopY, paragraphBottomY, thresholdX, EOLBeep, TopandBottomBeep); // play the end of line beep
-  }
-
-  else if (defaultDisplayMode == textDisplayMode.normalMode)
-  {
-    // iterating through the lines of text
-    for (int i = 0; i < lines.length; i++)
-    {
-      float lineY = textYStart + i * (lineHeight + extraSpacing); // calculate the line Y position (top end)
-
-      if (mouseY >= lineY && mouseY < (lineY + lineHeight))
+      String currentLine = lines[globalLineIndex]; // get the current line based on the global index
+      if (defaultFeature == Feature.charGrouping) 
       {
-        currentLineIndex = i;           // set the current line index
-      }
-      float lineXStart = margin;        // set the line X position (left end)
-    
-      String currentLine = lines[i]; // get the current line  
-    
-      /* WHEN THE CHARACTER GROUPING FEATURE IS ACTIVE */
-      if (defaultFeature == Feature.charGrouping)
-      {
-        // set the character grouping frequency
         charGroupingFrequency = gui.sliderInt("Braille Settings/Character Grouping Frequency", defaultCharGrouping_FREQ, 1, 8);
-        charGroupingFeature(currentLine, charGroupingFrequency, margin, lineY, lineHeight, boxHeightVal); // call the charGroupingFeature function
-      }
-
-      /* WHEN THE SLIDING WINDOW FEATURE IS ACTIVE */
-      else if (defaultFeature == Feature.slidingWindow)
-      { 
-        slidingWindowFrequency = gui.sliderInt("Braille Settings/Sliding Window Frequency", defaultSlidingWindow_FREQ, 1, 8); // set the sliding window frequency
-        slidingWindowFeature(currentLine, slidingWindowFrequency, margin, lineY, lineHeight, boxHeightVal); // call the slidingWindowFeature function
-      }
-
-      /* WHEN THE WORD GROUPING FEATURE IS ACTIVE */
-      else if (defaultFeature == Feature.wordGrouping)
+        charGroupingFeature(currentLine, charGroupingFrequency, margin, lineY, lineHeight, boxHeightVal);
+      } 
+      else if (defaultFeature == Feature.slidingWindow) 
       {
-        wordGroupingFeature(currentLine, margin, lineY, lineHeight, boxHeightVal); // call the wordGroupingFeature function
+        slidingWindowFrequency = gui.sliderInt("Braille Settings/Sliding Window Frequency", defaultSlidingWindow_FREQ, 1, 8);
+        slidingWindowFeature(currentLine, slidingWindowFrequency, margin, lineY, lineHeight, boxHeightVal);
+      } 
+      else 
+      {
+        wordGroupingFeature(currentLine, margin, lineY, lineHeight, boxHeightVal);
       }
     }
 
-    int activeLineIndex = (int) constrain((mouseY - textYStart) / (lineHeight + extraSpacing), 0, lines.length - 1); // calculate the active line index
-    float pointerX = constrain(mouseX, margin, margin + textWidth(lines[activeLineIndex])); // constrain the pointer X position 
-    float pointerY = textYStart + activeLineIndex * (lineHeight + extraSpacing) + lineHeight / 3; // calculate the pointer Y position
-    float paragraphTopY = textYStart; // set the paragraph top Y position
-    float paragraphBottomY = textYStart + (lines.length) * (lineHeight + extraSpacing); // set the paragraph bottom Y position
-    
-    pointer(pointerMode, pointerX, pointerY); // call the pointer function to draw the pointer)
-    
-    // Handle the change of line and end of line beeps
-    if (currentLineIndex != -1 && currentLineIndex != previousLineIndex)
+    if (defaultLanguage == Language.Korean && linesForDisplayKOR != null && activeLineIndex < linesForDisplayKOR.length) 
     {
-      COLBeep.stop();  // stop any current playback
-      COLBeep.play(); // play the sound
-      previousLineIndex = currentLineIndex; // update the previous line index
+      createTextBox(linesForDisplayKOR[activeLineIndex], 400, 40);
     }
-    float thresholdX = 8; // threshold for the ends of line beep in pixels
-    playBoundaryBeeps(pointerX, mouseY, margin, margin + textWidth(lines[activeLineIndex]), paragraphTopY, paragraphBottomY, thresholdX, EOLBeep, TopandBottomBeep); // play the end of line beep
+    float pointerX = constrain(mouseX, margin, margin + textWidth(lines[activeLineIndex]));
+    float pointerY = textYStart + activeLineIndex * (lineHeight + extraSpacing) + lineHeight / 3;
+    pointer(pointerMode, pointerX, pointerY);
+
+    if (currentLineIndex != -1 && currentLineIndex != previousLineIndex) 
+    {
+      COLBeep.stop();
+      COLBeep.play();
+      previousLineIndex = currentLineIndex;
+    }
+    float topVisibleY = textYStart;
+    float bottomVisibleY = textYStart + visibleLineCount * (lineHeight + extraSpacing);
+    playBoundaryBeeps(pointerX, mouseY, margin, margin + textWidth(lines[activeLineIndex]), topVisibleY, bottomVisibleY, 8, EOLBeep, TopandBottomBeep);
+
+    // int currentLineIndex = -1;
+    // int activeLineIndex = constrain((int)((mouseY - textYStart) / (lineHeight + extraSpacing)) + lineWindowStartIndex, 0, lines.length - 1);
+    // for (int i = lineWindowStartIndex; i < min(lineWindowStartIndex + 10, lines.length); i++)
+    // {
+    //   float lineY = textYStart + (i - lineWindowStartIndex) * (lineHeight + extraSpacing);
+    //   if (mouseY >= lineY && mouseY < lineY + lineHeight) currentLineIndex = i;
+
+    //   String currentLine = lines[i];
+    //   if (defaultFeature == Feature.charGrouping) 
+    //   {
+    //     charGroupingFrequency = gui.sliderInt("Braille Settings/Character Grouping Frequency", defaultCharGrouping_FREQ, 1, 8);
+    //     charGroupingFeature(currentLine, charGroupingFrequency, margin, lineY, lineHeight, boxHeightVal);
+    //   } 
+    //   else if (defaultFeature == Feature.slidingWindow) 
+    //   {
+    //     slidingWindowFrequency = gui.sliderInt("Braille Settings/Sliding Window Frequency", defaultSlidingWindow_FREQ, 1, 8);
+    //     slidingWindowFeature(currentLine, slidingWindowFrequency, margin, lineY, lineHeight, boxHeightVal);
+    //   } 
+    //   else 
+    //   {
+    //     wordGroupingFeature(currentLine, margin, lineY, lineHeight, boxHeightVal);
+    //   }
+    // }
+    
+    // if (defaultLanguage == Language.Korean && linesForDisplayKOR != null && activeLineIndex < linesForDisplayKOR.length) 
+    // {
+    //   createTextBox(linesForDisplayKOR[activeLineIndex], 400, 40);
+    // }
+
+    // float pointerX = constrain(mouseX, margin, margin + textWidth(lines[activeLineIndex]));
+    // float pointerY = textYStart + activeLineIndex * (lineHeight + extraSpacing) + lineHeight / 3;
+    // pointer(pointerMode, pointerX, pointerY);
+
+    // if (currentLineIndex != -1 && currentLineIndex != previousLineIndex) 
+    // {
+    //   COLBeep.stop();
+    //   COLBeep.play();
+    //   previousLineIndex = currentLineIndex;
+    // }
+    // playBoundaryBeeps(pointerX, mouseY, margin, margin + textWidth(lines[activeLineIndex]), textYStart, textYStart + lines.length * (lineHeight + extraSpacing), 8, EOLBeep, TopandBottomBeep);
   }
 }
 
@@ -494,15 +598,33 @@ void serialEvent(Serial myPort)
     println(inString); // Debugging log
     if (inString.equals("NEXT"))
     {
-      textIndex = (textIndex + 1) % lines.length;
-      //DTEXT = lines[textIndex]; // update the text to the next sample text
-      //println("Switched to next line: " + DTEXT);
+      if (defaultDisplayMode == textDisplayMode.buttonMode)
+      {
+        textIndex = (textIndex + 1) % lines.length;
+      }
+      else if (defaultDisplayMode == textDisplayMode.normalMode && defaultTextMode == textMode.fileMode)
+      {
+        lineWindowStartIndex += 10;
+        if (lineWindowStartIndex >= lines.length) 
+        {
+          lineWindowStartIndex = 0; // wrap around to start
+        }
+      }
     }
     else if (inString.equals("PREV"))
     {
-      textIndex = (textIndex - 1 + lines.length) % lines.length; // wrap around to the last line if we go below 0
-      //DTEXT = lines[textIndex]; // update the text to the previous sample text
-      //println("Switched to previous line: " + DTEXT);
+      if (defaultDisplayMode == textDisplayMode.buttonMode)
+      {
+        textIndex = (textIndex - 1 + lines.length) % lines.length; // wrap around to the last line if we go below 0
+      }
+      else if (defaultDisplayMode == textDisplayMode.normalMode && defaultTextMode == textMode.fileMode)
+      {
+        lineWindowStartIndex -= 10;
+        if (lineWindowStartIndex < 0) 
+        {
+          lineWindowStartIndex = max(0, lines.length - 10); // wrap around to the last 10 lines
+        }
+      }
     }
     else if (inString.equals("IDLE"))
     {
@@ -741,4 +863,23 @@ void pointer(String mode, float pointerX, float pointerY)
     fill(0, 0, 255); // set the pointer color to blue
     ellipse(pointerX, pointerY, 20, 20); // draw the circle pointer
   }
+}
+
+void createTextBox(String input, int boxWidth, int boxHeight)
+{
+  //background(0); // set the background color to black
+
+  // Calculate bottom-left corner position
+  int boxX = 50;   // 50 pixels margin from right
+  int boxY = height - boxHeight - 50; // 50 pixels margin from top
+
+  // Draw the textbox
+  fill(0);
+  //rect(boxX, boxY, boxWidth, boxHeight);
+
+  // Draw the text inside
+  fill(255);
+  textSize(20);
+  textAlign(LEFT, CENTER);
+  text(input, boxX + 10, boxY + boxHeight / 2);
 }
